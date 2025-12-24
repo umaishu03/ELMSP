@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Circular Favicon</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            overflow: hidden;
+        }
+        .logo-preview img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Create Circular Favicon for ELMSP</h1>
+        
+        <div class="logo-preview">
+            <img src="images/elmsp-logo.png" alt="ELMSP Logo" id="logoImg">
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instructions to Create Circular Favicon:</h3>
+            
+            <div class="step">
+                <strong>Step 1:</strong> Use an online tool like <a href="https://www.favicon-generator.org/" target="_blank">Favicon Generator</a> or <a href="https://realfavicongenerator.net/" target="_blank">Real Favicon Generator</a>
+            </div>
+            
+            <div class="step">
+                <strong>Step 2:</strong> Upload your ELMSP logo (images/elmsp-logo.png)
+            </div>
+            
+            <div class="step">
+                <strong>Step 3:</strong> Choose "Circular" or "Round" shape option
+            </div>
+            
+            <div class="step">
+                <strong>Step 4:</strong> Generate favicon files (16x16, 32x32, 48x48, etc.)
+            </div>
+            
+            <div class="step">
+                <strong>Step 5:</strong> Download and replace the files in your public folder:
+                <ul>
+                    <li>favicon.ico</li>
+                    <li>favicon.png</li>
+                    <li>apple-touch-icon.png (optional)</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h3>🎨 Alternative: Use CSS to Create Circular Effect</h3>
+        <p>If you want to keep the current logo but make it appear circular, you can use CSS:</p>
+        
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0;">
+            <code>
+                .favicon {<br>
+                &nbsp;&nbsp;border-radius: 50%;<br>
+                &nbsp;&nbsp;background: white;<br>
+                &nbsp;&nbsp;padding: 2px;<br>
+                }<br>
+            </code>
+        </div>
+        
+        <h3>🔧 Quick Fix Applied</h3>
+        <p>✅ I've already updated your login page and layout to use the favicon.png file.</p>
+        <p>✅ The favicon references are now properly set up in both files.</p>
+        
+        <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <strong>✅ Current Status:</strong><br>
+            • favicon.png is set as the main favicon<br>
+            • favicon.ico is set as fallback<br>
+            • apple-touch-icon is set for iOS devices<br>
+            • Both login page and main layout are updated
+        </div>
+    </div>
+</body>
+</html>

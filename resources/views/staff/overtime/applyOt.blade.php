@@ -1,0 +1,290 @@
+@extends('layouts.staff')
+@section('title', 'Apply Overtime')
+@section('content')
+<!-- Breadcrumbs -->
+<div class="mb-6">
+    {!! \App\Helpers\BreadcrumbHelper::render() !!}
+</div>
+
+<div class="max-w-7xl mx-auto mt-8 mb-12 space-y-6">
+    <!-- ========== APPLY OVERTIME SECTION ========== -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-gray-600 to-gray-800 px-8 py-6">
+            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+                <i class="fas fa-clock"></i>
+                Apply Overtime
+            </h1>
+            <p class="text-gray-200 mt-2">Request overtime work for upcoming shifts</p>
+        </div>
+
+        <form id="applyOvertimeForm" method="POST" action="{{ route('staff.applyOt.store') }}">
+            @csrf
+            @if(session('success'))
+                <div class="p-3 mb-4 bg-green-50 text-green-700 rounded">{{ session('success') }}</div>
+            @endif
+            <!-- Employee Information Section -->
+            <div class="px-8 py-6 border-b border-gray-100 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fas fa-user-circle text-gray-600"></i>
+                    Employee Information
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-2">Full Name</label>
+                        <input type="text" 
+                               class="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-gray-100 text-gray-700" 
+                               value="{{ Auth::user()->name }}" 
+                               readonly />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-2">Employee ID</label>
+                        <input type="text" 
+                               class="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-gray-100 text-gray-700" 
+                               value="{{ Auth::user()->employee_id ?? '' }}" 
+                               readonly />
+                    </div>
+                </div>
+            </div>
+
+            <!-- OT Request Details -->
+            <div class="px-8 py-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fas fa-calendar-alt text-gray-600"></i>
+                    Overtime Request Details
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Type of Overtime <span class="text-red-500">*</span>
+                        </label>
+                        <select name="ot_type" 
+                                id="otType"
+                                class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" 
+                                required>
+                            <option value="">Select Type</option>
+                            <option value="public_holiday">Public Holiday</option>
+                            <option value="fulltime">Fulltime</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" 
+                               name="ot_date"
+                               id="otDate"
+                               class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent" 
+                               required />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hours <span class="text-red-500">*</span></label>
+                        <input type="number" step="0.25" min="0.5" name="hours" id="hoursInput" value="" class="w-full border border-gray-300 rounded-lg px-4 py-3" readonly />
+                        <p class="text-xs text-gray-500 mt-1">Auto-set based on your department</p>
+                    </div>
+                </div>
+
+                <!-- Public Holidays List (Hidden by default) -->
+                <div id="publicHolidaysSection" class="hidden mt-6">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-calendar-day text-blue-600"></i>
+                            Restaurant Public Holidays (2025)
+                        </h3>
+                        
+                        <div class="bg-white rounded-lg overflow-hidden shadow-sm">
+                            <div class="max-h-96 overflow-y-auto">
+                                <table class="w-full">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Holiday</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Date</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Day</th>
+                                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="holidaysTableBody" class="divide-y divide-gray-200">
+                                        <!-- Holiday rows will be inserted here by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <div class="flex items-start gap-2 text-sm">
+                                <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                                <div>
+                                    <p class="font-semibold text-blue-900">Next Public Holiday</p>
+                                    <p class="text-blue-800" id="nextHolidayInfo">The date has been automatically set to the next upcoming public holiday.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Reason / Notes
+                    </label>
+                    <textarea name="ot_reason" 
+                              rows="3" 
+                              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                              placeholder="Please provide reason for overtime request..."></textarea>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="px-8 py-6 border-t border-gray-100 bg-gray-50">
+                <div class="flex flex-col md:flex-row gap-4 justify-end">
+                    <button type="reset" class="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl border-2 border-gray-300 transition-all duration-200">
+                        Reset
+                    </button>
+                    <button type="submit" class="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Submit Request</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+// ========== PUBLIC HOLIDAYS SECTION ==========
+
+// Set default hours based on department
+document.addEventListener('DOMContentLoaded', function() {
+    const department = "{{ $department ?? '' }}";
+    const hoursInput = document.getElementById('hoursInput');
+    
+    // Department OT hour limits
+    const hourLimits = {
+        'manager': 2,
+        'supervisor': 2,
+        'waiter': 4.5,
+        'cashier': 4.5,
+        'kitchen': 4.5,
+        'joki': 4.5,
+        'barista': 4.5
+    };
+    
+    const hours = hourLimits[department] || 4.5;
+    hoursInput.value = hours;
+});
+
+// ========== PUBLIC HOLIDAYS SECTION ==========
+const publicHolidays = [
+    { name: "New Year's Day", date: "2025-01-01", day: "Wednesday" },
+    { name: "Chinese New Year", date: "2025-01-29", day: "Wednesday" },
+    { name: "Chinese New Year (2nd Day)", date: "2025-01-30", day: "Thursday" },
+    { name: "Federal Territory Day", date: "2025-02-01", day: "Saturday" },
+    { name: "Thaipusam", date: "2025-02-11", day: "Tuesday" },
+    { name: "Hari Raya Aidilfitri", date: "2025-03-31", day: "Monday" },
+    { name: "Hari Raya Aidilfitri (2nd Day)", date: "2025-04-01", day: "Tuesday" },
+    { name: "Labour Day", date: "2025-05-01", day: "Thursday" },
+    { name: "Vesak Day", date: "2025-05-12", day: "Monday" },
+    { name: "Agong's Birthday", date: "2025-06-07", day: "Saturday" },
+    { name: "Hari Raya Aidiladha", date: "2025-06-07", day: "Saturday" },
+    { name: "Awal Muharram", date: "2025-06-27", day: "Friday" },
+    { name: "Merdeka Day", date: "2025-08-31", day: "Sunday" },
+    { name: "Malaysia Day", date: "2025-09-16", day: "Tuesday" },
+    { name: "Prophet Muhammad's Birthday", date: "2025-09-05", day: "Friday" },
+    { name: "Deepavali", date: "2025-10-20", day: "Monday" },
+    { name: "Christmas Day", date: "2025-12-25", day: "Thursday" }
+];
+
+// Get next public holiday
+function getNextPublicHoliday() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let holiday of publicHolidays) {
+        const holidayDate = new Date(holiday.date);
+        if (holidayDate >= today) {
+            return holiday;
+        }
+    }
+    return null;
+}
+
+// Format date to display
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-MY', options);
+}
+
+// Populate holidays table
+function populateHolidaysTable() {
+    const tbody = document.getElementById('holidaysTableBody');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    tbody.innerHTML = '';
+    
+    publicHolidays.forEach(holiday => {
+        const holidayDate = new Date(holiday.date);
+        const isPast = holidayDate < today;
+        const isUpcoming = holidayDate >= today;
+        
+        const row = document.createElement('tr');
+        row.className = isUpcoming ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50';
+        
+        row.innerHTML = `
+            <td class="px-4 py-3 text-sm font-medium text-gray-900">${holiday.name}</td>
+            <td class="px-4 py-3 text-sm text-gray-700">${formatDate(holiday.date)}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${holiday.day}</td>
+            <td class="px-4 py-3">
+                ${isPast 
+                    ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"><i class="fas fa-check mr-1"></i>Past</span>'
+                    : '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"><i class="fas fa-calendar-check mr-1"></i>Upcoming</span>'
+                }
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Handle OT Type change
+document.getElementById('otType').addEventListener('change', function() {
+    const publicHolidaysSection = document.getElementById('publicHolidaysSection');
+    const otDateInput = document.getElementById('otDate');
+    const nextHolidayInfo = document.getElementById('nextHolidayInfo');
+    
+    if (this.value === 'public_holiday') {
+        // Show public holidays section
+        publicHolidaysSection.classList.remove('hidden');
+        populateHolidaysTable();
+        
+        // Set date to next public holiday
+        const nextHoliday = getNextPublicHoliday();
+        if (nextHoliday) {
+            otDateInput.value = nextHoliday.date;
+            nextHolidayInfo.textContent = `Next public holiday: ${nextHoliday.name} (${formatDate(nextHoliday.date)})`;
+        } else {
+            nextHolidayInfo.textContent = 'No upcoming public holidays found for this year.';
+        }
+    } else {
+        // Hide public holidays section and clear date
+        publicHolidaysSection.classList.add('hidden');
+        otDateInput.value = '';
+    }
+});
+
+// Form submission: confirm then allow normal POST to server
+document.getElementById('applyOvertimeForm').addEventListener('submit', function(e) {
+    if (!confirm('Submit overtime application?')) {
+        e.preventDefault();
+        return false;
+    }
+    // allow normal form submission so server stores the record and returns feedback
+});
+</script>
+
+@endsection

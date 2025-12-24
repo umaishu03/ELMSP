@@ -1,0 +1,8 @@
+staff_name,email,id,department,role
+John Doe,john.doe@example.com,YS399,manager,admin
+Jane Smith,jane.smith@example.com,YS400,supervisor,staff
+Mike Johnson,mike.johnson@example.com,YS401,cashier,staff
+Sarah Wilson,sarah.wilson@example.com,YS402,barista,staff
+David Brown,david.brown@example.com,YS403,joki,staff
+Lisa Davis,lisa.davis@example.com,YS404,waiter,staff
+Tom Miller,tom.miller@example.com,YS405,kitchen,staff
