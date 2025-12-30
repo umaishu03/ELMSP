@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Staff Dashboard') - AI ELMSP</title>
+    <title>@yield('title', 'Staff Dashboard') - ELMSP</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
@@ -159,7 +159,7 @@
                         </li>
                     </ul>
                     <li>
-                        <a href="{{ route('staff.payslip') }}" class="nav-item flex items-center px-4 py-3 text-white rounded-lg">
+                        <a href="{{ route('staff.payslip') }}" class="nav-item {{ request()->routeIs('staff.payslip') || request()->routeIs('staff.payslip.*') ? 'active' : '' }} flex items-center px-4 py-3 text-white rounded-lg">
                             <i class="fas fa-money-bill-wave mr-3"></i>
                             <span>Payslip</span>
                         </a>
@@ -171,7 +171,7 @@
         <!-- Main Content -->
         <main class="flex-1 p-8">
 
-            <div class="mt-20 ml-64">
+            <div id="mainContent" class="mt-20 ml-64 transition-all duration-300">
                 @yield('content')
             </div>
         </main>
@@ -197,7 +197,18 @@
         // Sidebar toggle functionality
         document.getElementById('sidebarToggle').addEventListener('click', function() {
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('-ml-64');
+            const mainContent = document.getElementById('mainContent');
+            const isHidden = sidebar.classList.contains('-ml-64');
+            
+            if (isHidden) {
+                sidebar.classList.remove('-ml-64');
+                mainContent.classList.remove('ml-0');
+                mainContent.classList.add('ml-64');
+            } else {
+                sidebar.classList.add('-ml-64');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-0');
+            }
         });
 
         // User menu toggle functionality
@@ -220,10 +231,15 @@
         // Mobile responsive sidebar
         function handleResize() {
             const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
             if (window.innerWidth < 768) {
                 sidebar.classList.add('-ml-64');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-0');
             } else {
                 sidebar.classList.remove('-ml-64');
+                mainContent.classList.remove('ml-0');
+                mainContent.classList.add('ml-64');
             }
         }
 

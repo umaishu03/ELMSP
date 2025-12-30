@@ -146,17 +146,17 @@
                                 <i class="fas fa-money-check-alt mr-3"></i>
                                 <span>Payroll</span>
                             </div>
-                            <i class="fas fa-chevron-right text-sm" id="payroll-chevron" style="transform: {{ request()->routeIs('admin.*payroll*') ? 'rotate(90deg)' : 'rotate(0deg)' }}"></i>
+                            <i class="fas fa-chevron-right text-sm" id="payroll-chevron" style="transform: {{ request()->routeIs('admin.payroll') || request()->routeIs('admin.payslip') || request()->routeIs('admin.payslip.*') ? 'rotate(90deg)' : 'rotate(0deg)' }}"></i>
                         </a>
-                        <ul class="ml-4 mt-2 space-y-1 {{ request()->routeIs('admin.*payroll*') ? '' : 'hidden' }}" id="payroll-dropdown">
+                        <ul class="ml-4 mt-2 space-y-1 {{ request()->routeIs('admin.payroll') || request()->routeIs('admin.payslip') || request()->routeIs('admin.payslip.*') ? '' : 'hidden' }}" id="payroll-dropdown">
                             <li>
-                                <a href="{{ route('admin.payroll') }}" class="nav-item flex items-center px-4 py-2 text-white rounded-lg text-sm" onclick="event.stopPropagation();">
+                                <a href="{{ route('admin.payroll') }}" class="nav-item {{ request()->routeIs('admin.payroll') ? 'active' : '' }} flex items-center px-4 py-2 text-white rounded-lg text-sm" onclick="event.stopPropagation();">
                                     <i class="fas fa-calculator mr-3"></i>
                                     <span>Calculation</span>
                                 </a>
                             </li>
                             <li>
-                                <a href="{{ route('admin.payslip') }}" class="nav-item flex items-center px-4 py-2 text-white rounded-lg text-sm" onclick="event.stopPropagation();">
+                                <a href="{{ route('admin.payslip') }}" class="nav-item {{ request()->routeIs('admin.payslip') ? 'active' : '' }} flex items-center px-4 py-2 text-white rounded-lg text-sm" onclick="event.stopPropagation();">
                                     <i class="fas fa-file-invoice-dollar mr-3"></i>
                                     <span>Staff Payslip</span>
                                 </a>
@@ -185,7 +185,7 @@
                 </div>
             @endif
 
-            <div class="mt-20 ml-64">
+            <div id="mainContent" class="mt-20 ml-64 transition-all duration-300">
                 @yield('content')
             </div>
         </main>
@@ -203,7 +203,18 @@
         // Sidebar toggle functionality
         document.getElementById('sidebarToggle').addEventListener('click', function() {
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('-ml-64');
+            const mainContent = document.getElementById('mainContent');
+            const isHidden = sidebar.classList.contains('-ml-64');
+            
+            if (isHidden) {
+                sidebar.classList.remove('-ml-64');
+                mainContent.classList.remove('ml-0');
+                mainContent.classList.add('ml-64');
+            } else {
+                sidebar.classList.add('-ml-64');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-0');
+            }
         });
 
         // User menu toggle functionality
@@ -226,10 +237,15 @@
         // Mobile responsive sidebar
         function handleResize() {
             const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
             if (window.innerWidth < 768) {
                 sidebar.classList.add('-ml-64');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-0');
             } else {
                 sidebar.classList.remove('-ml-64');
+                mainContent.classList.remove('ml-0');
+                mainContent.classList.add('ml-64');
             }
         }
 

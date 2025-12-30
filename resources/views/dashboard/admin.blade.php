@@ -25,9 +25,9 @@ $allPending = Overtime::where('status','pending')->with('staff.user')->orderBy('
 
 // Pending payroll (salary) claims
 $pendingPayrollCount = OTClaim::query()->payroll()->pending()->count();
-$pendingPayrolls = OTClaim::query()->payroll()->pending()->with('payroll.user')->orderBy('created_at','desc')->take(3)->get();
+$pendingPayrolls = OTClaim::query()->payroll()->pending()->orderBy('created_at','desc')->take(3)->get();
 // Full payroll list for the expandable section
-$allPayrolls = OTClaim::query()->payroll()->pending()->with('payroll.user')->orderBy('created_at','desc')->get();
+$allPayrolls = OTClaim::query()->payroll()->pending()->orderBy('created_at','desc')->get();
 
 // Pending replacement leave claims
 $pendingReplacementCount = OTClaim::query()->replacementLeave()->pending()->count();
@@ -166,11 +166,22 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->with('leave.
         <div class="p-3 md:p-4">
             <div class="space-y-2">
                 @forelse($pendingPayrolls as $claim)
+                @php
+                    // Get user from overtime records for payroll claims
+                    $claimUser = null;
+                    if ($claim->ot_ids && is_array($claim->ot_ids) && !empty($claim->ot_ids)) {
+                        $firstOtId = $claim->ot_ids[0];
+                        $overtime = \App\Models\Overtime::with('staff.user')->find($firstOtId);
+                        if ($overtime && $overtime->staff && $overtime->staff->user) {
+                            $claimUser = $overtime->staff->user;
+                        }
+                    }
+                    $amounts = $claim->calculatePayrollAmounts();
+                @endphp
                 <div class="flex items-center space-x-2 p-2 bg-green-50 rounded hover:bg-green-100 transition cursor-pointer text-xs md:text-sm">
                     <div class="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
-                        @php $amounts = $claim->calculatePayrollAmounts(); @endphp
-                        <p class="font-semibold text-gray-800 truncate">{{ $claim->payroll->user->name ?? 'Unknown' }} - RM {{ number_format($amounts['total_pay'] ?? 0, 2) }}</p>
+                        <p class="font-semibold text-gray-800 truncate">{{ $claimUser->name ?? 'Unknown' }} - RM {{ number_format($amounts['total_pay'] ?? 0, 2) }}</p>
                         <p class="text-xs text-gray-500">{{ $claim->created_at->diffForHumans() }}</p>
                     </div>
                 </div>
@@ -335,17 +346,28 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->with('leave.
                 <div class="p-6 text-gray-600">No payroll claims available.</div>
             @else
                 @foreach($allPayrolls as $claim)
+                @php
+                    // Get user from overtime records for payroll claims
+                    $claimUser = null;
+                    if ($claim->ot_ids && is_array($claim->ot_ids) && !empty($claim->ot_ids)) {
+                        $firstOtId = $claim->ot_ids[0];
+                        $overtime = \App\Models\Overtime::with('staff.user')->find($firstOtId);
+                        if ($overtime && $overtime->staff && $overtime->staff->user) {
+                            $claimUser = $overtime->staff->user;
+                        }
+                    }
+                @endphp
                 <div class="p-6 {{ $claim->status === 'pending' ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50' }} transition cursor-pointer border-l-4 {{ $claim->status === 'pending' ? 'border-green-500' : 'border-transparent' }}">
                     <div class="flex items-start justify-between">
                         <div class="flex items-start space-x-4 flex-1">
                             <div class="flex-shrink-0">
                                 <div class="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                    {{ strtoupper(substr($claim->user->name ?? 'U', 0, 2)) }}
+                                    {{ strtoupper(substr($claimUser->name ?? 'U', 0, 2)) }}
                                 </div>
                             </div>
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
-                                    <h3 class="font-bold text-gray-900">{{ $claim->user->name ?? 'Unknown' }}</h3>
+                                    <h3 class="font-bold text-gray-900">{{ $claimUser->name ?? 'Unknown' }}</h3>
                                     <span class="{{ $claim->status === 'pending' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
                                 </div>
                                 @php $amounts = $claim->calculatePayrollAmounts(); @endphp

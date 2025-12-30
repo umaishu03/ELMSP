@@ -193,6 +193,10 @@ class StaffTimetableController extends Controller
                 'start_time' => 'required',
                 'end_time' => 'required',
             ]);
+            
+            // Validate time ranges (6:00 AM - 11:00 PM)
+            $this->validateTimeRange($data['start_time'], 'start_time');
+            $this->validateTimeRange($data['end_time'], 'end_time');
         } else {
             // ensure times are null/empty
             $data['start_time'] = '';
@@ -252,6 +256,16 @@ class StaffTimetableController extends Controller
                         throw new \Exception('Staff record not found for user_id: ' . ($s['user_id'] ?? '')); 
                     }
 
+                    // Validate time ranges if not rest day (6:00 AM - 11:00 PM)
+                    if (!$rest) {
+                        if (isset($s['start_time']) && $s['start_time']) {
+                            $this->validateTimeRange($s['start_time'], 'start_time');
+                        }
+                        if (isset($s['end_time']) && $s['end_time']) {
+                            $this->validateTimeRange($s['end_time'], 'end_time');
+                        }
+                    }
+
                     $payload = [
                         'staff_id' => $staff->id,
                         'date' => $s['date'],
@@ -289,6 +303,10 @@ class StaffTimetableController extends Controller
                 'start_time' => 'required',
                 'end_time' => 'required',
             ]);
+            
+            // Validate time ranges (6:00 AM - 11:00 PM)
+            $this->validateTimeRange($data['start_time'], 'start_time');
+            $this->validateTimeRange($data['end_time'], 'end_time');
         } else {
             $data['start_time'] = '';
             $data['end_time'] = '';
@@ -322,5 +340,39 @@ class StaffTimetableController extends Controller
         $shift = \App\Models\Shift::findOrFail($id);
         $shift->delete();
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Validate that time is within valid range (6:00 AM - 11:00 PM)
+     */
+    private function validateTimeRange($time, $fieldName = 'time')
+    {
+        if (empty($time)) {
+            return; // Skip validation for empty times (rest days)
+        }
+
+        // Parse time string (HH:MM format)
+        $parts = explode(':', $time);
+        if (count($parts) !== 2) {
+            abort(422, "Invalid time format for {$fieldName}. Expected HH:MM format.");
+        }
+
+        $hours = (int) $parts[0];
+        $minutes = (int) $parts[1];
+
+        // Validate hours are between 6 and 23 (6:00 AM to 11:00 PM)
+        if ($hours < 6 || $hours > 23) {
+            abort(422, "{$fieldName} must be between 6:00 AM and 11:00 PM. You entered {$time}.");
+        }
+
+        // If hours is 23, minutes must be 00 (only 23:00 is valid, not 23:01, etc.)
+        if ($hours === 23 && $minutes > 0) {
+            abort(422, "{$fieldName} must be between 6:00 AM and 11:00 PM. You entered {$time}.");
+        }
+
+        // Validate minutes are between 0 and 59
+        if ($minutes < 0 || $minutes > 59) {
+            abort(422, "Invalid minutes in {$fieldName}. Expected 0-59.");
+        }
     }
 }

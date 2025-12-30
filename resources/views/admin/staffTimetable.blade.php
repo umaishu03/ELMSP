@@ -6,7 +6,9 @@
 <div class="mb-6">
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
-
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Staff Timetable</h1>
+</div>
 <div class="flex flex-col lg:flex-row gap-8">
     <div class="flex-1">
         <div class="flex items-center justify-between p-2 border border-gray-300 rounded-lg shadow-sm bg-white mb-4">
@@ -30,9 +32,6 @@
                 <!-- Table Header -->
                 <thead class="bg-blue-50">
                     <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                            #
-                        </th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
                             Name
                         </th>
@@ -74,7 +73,6 @@
                     @endphp
                     @foreach($orderedStaff as $index => $staffMember)
                     <tr class="border-b align-top">
-                        <td class="px-2 py-1 text-center align-top">{{ $index + 1 }}</td>
                         <td class="px-2 py-1 font-semibold align-top truncate">{{ $staffMember->user->name }}</td>
                         <td class="px-2 py-1 text-center text-gray-600 align-top truncate">{{ $staffMember->department }}</td>
                         @foreach($dates as $day)
@@ -91,7 +89,7 @@
                                    data-start_time="{{ $shift->start_time ?? '' }}"
                                    data-end_time="{{ $shift->end_time ?? '' }}"
                                    data-break_minutes="{{ $shift->break_minutes ?? '' }}"
-                                   data-department="{{ $shift->staff->department ?? '' }}"
+                                   data-department="{{ $shift->staff->department ?? $staffMember->department ?? '' }}"
                                    data-rest_day="{{ $shift->rest_day ?? 0 }}"
                                    onclick="openEditShiftModal(this)">
                                 @if($shift && $leaveStatus === 'approved')
@@ -128,6 +126,7 @@
                 <label class="block text-xs font-semibold mb-1">Department:</label>
                 <select id="assignDepartment" class="w-full px-3 py-2 border rounded-lg">
                     <option value="">Department</option>
+                    <option>Manager</option>
                     <option>Supervisor</option>
                     <option>Cashier</option>
                     <option>Barista</option>
@@ -146,15 +145,30 @@
             </div>
             <div class="mb-2">
                 <label class="block text-xs font-semibold mb-1">Start Time:</label>
-                <input id="assignStartTime" type="time" class="w-full px-3 py-2 border rounded-lg" value=""> 
+                <input id="assignStartTime" type="time" min="06:00" max="23:00" class="w-full px-3 py-2 border rounded-lg" value=""> 
+                <p class="text-xs text-gray-500 mt-1">Valid time: 6:00 AM - 11:00 PM</p>
             </div>
             <div class="mb-2">
                 <label class="block text-xs font-semibold mb-1">End Time:</label>
-                <input id="assignEndTime" type="time" class="w-full px-3 py-2 border rounded-lg" value=""> 
+                <input id="assignEndTime" type="time" min="06:00" max="23:00" class="w-full px-3 py-2 border rounded-lg" value=""> 
+                <p class="text-xs text-gray-500 mt-1">Valid time: 6:00 AM - 11:00 PM</p>
             </div>
             <div class="mb-2">
                 <label class="block text-xs font-semibold mb-1">Break (mins):</label>
                 <input id="assignBreakMinutes" type="number" min="0" class="w-full px-3 py-2 border rounded-lg" value="60">
+            </div>
+            <div class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="text-xs font-semibold text-blue-800 mb-1">Normal Working Hours:</div>
+                <div id="assignNormalHoursNote" class="text-xs text-blue-700">
+                    Manager & Supervisor: 12 hours<br>
+                    Other Staff: 7.5 hours
+                </div>
+            </div>
+            <div class="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                <div class="text-xs font-semibold text-gray-700 mb-1">Calculated Hours:</div>
+                <div id="assignCalculatedHours" class="text-xs text-gray-600 font-semibold">
+                    Enter start and end time to calculate
+                </div>
             </div>
             <div class="mb-2 flex items-center gap-2">
                 <input id="assignRestDay" type="checkbox" class="h-4 w-4" />
@@ -192,15 +206,30 @@
         <h2 class="text-lg font-bold mb-4">EDIT SHIFT</h2>
         <div class="mb-2">
             <label class="block text-xs font-semibold mb-1">Start Time:</label>
-            <input id="editStartTime" type="time" placeholder="Start Time" class="w-full px-3 py-2 border rounded-lg" value="">
+            <input id="editStartTime" type="time" min="06:00" max="23:00" placeholder="Start Time" class="w-full px-3 py-2 border rounded-lg" value="">
+            <p class="text-xs text-gray-500 mt-1">Valid time: 6:00 AM - 11:00 PM</p>
         </div>
         <div class="mb-2">
             <label class="block text-xs font-semibold mb-1">End Time:</label>
-            <input id="editEndTime" type="time" placeholder="End Time" class="w-full px-3 py-2 border rounded-lg" value="">
+            <input id="editEndTime" type="time" min="06:00" max="23:00" placeholder="End Time" class="w-full px-3 py-2 border rounded-lg" value="">
+            <p class="text-xs text-gray-500 mt-1">Valid time: 6:00 AM - 11:00 PM</p>
         </div>
         <div class="mb-2">
             <label class="block text-xs font-semibold mb-1">Break (mins):</label>
             <input id="editBreakMinutes" type="number" placeholder="Break (mins)" min="0" class="w-full px-3 py-2 border rounded-lg" value="60">
+        </div>
+        <div class="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="text-xs font-semibold text-blue-800 mb-1">Normal Working Hours:</div>
+            <div id="editNormalHoursNote" class="text-xs text-blue-700">
+                Manager & Supervisor: 12 hours<br>
+                Other Staff: 7.5 hours
+            </div>
+        </div>
+        <div class="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+            <div class="text-xs font-semibold text-gray-700 mb-1">Calculated Hours:</div>
+            <div id="editCalculatedHours" class="text-xs text-gray-600 font-semibold">
+                Enter start and end time to calculate
+            </div>
         </div>
         <div class="mb-2">
             <label class="block text-xs font-semibold mb-1">Department:</label>
@@ -351,11 +380,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const assignDepartment = document.getElementById('assignDepartment');
     const assignRestDayCheckbox = document.getElementById('assignRestDay');
 
-    function filterUserOptions(query) {
-        const q = query.trim().toLowerCase();
+    function filterUserOptions(query, departmentFilter) {
+        const q = (query || '').trim().toLowerCase();
+        const deptFilter = (departmentFilter || '').trim();
+        
         // Clear options
         assignUsersSelect.innerHTML = '';
-        const matches = users.filter(u => (u.name + ' ' + u.email).toLowerCase().includes(q));
+        
+        // Filter by both search query and department
+        let matches = users;
+        
+        // Filter by department if selected
+        if (deptFilter) {
+            matches = matches.filter(u => {
+                const userDept = (u.department || '').trim();
+                return userDept.toLowerCase() === deptFilter.toLowerCase();
+            });
+        }
+        
+        // Filter by search query if provided
+        if (q) {
+            matches = matches.filter(u => (u.name + ' ' + u.email).toLowerCase().includes(q));
+        }
+        
+        // Populate the select with filtered results
         matches.forEach(u => {
             const opt = document.createElement('option');
             opt.value = u.id;
@@ -363,8 +411,8 @@ document.addEventListener('DOMContentLoaded', function() {
             assignUsersSelect.appendChild(opt);
         });
 
-        // If exactly one match, auto-set department (if available)
-        if (matches.length === 1 && matches[0].department) {
+        // If exactly one match, auto-set department (if available and not already set)
+        if (matches.length === 1 && matches[0].department && !deptFilter) {
             // Try to set assignDepartment to staff's department if exists in options
             const deptVal = matches[0].department;
             let found = false;
@@ -386,13 +434,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Function to update employee list based on current filters
+    function updateEmployeeList() {
+        const searchQuery = assignSearch ? assignSearch.value : '';
+        const selectedDept = assignDepartment ? assignDepartment.value : '';
+        filterUserOptions(searchQuery, selectedDept);
+    }
+
     if (assignSearch) {
         assignSearch.addEventListener('input', function(e) {
-            filterUserOptions(e.target.value);
+            updateEmployeeList();
         });
-        // Initialize with empty query to populate list
-        filterUserOptions('');
     }
+    
+    // Filter employees when department changes
+    if (assignDepartment) {
+        assignDepartment.addEventListener('change', function() {
+            updateEmployeeList();
+            // Update hours calculation when department changes
+            updateAssignHoursCalculation();
+        });
+    }
+    
+    // Initialize with empty query to populate list
+    updateEmployeeList();
 
     // Toggle time/break inputs when Rest Day is checked
     if (assignRestDayCheckbox) {
@@ -404,7 +469,226 @@ document.addEventListener('DOMContentLoaded', function() {
             if (startEl) startEl.disabled = rest;
             if (endEl) endEl.disabled = rest;
             if (breakEl) breakEl.disabled = rest;
+            // Update calculation when rest day is toggled
+            updateAssignHoursCalculation();
         });
+    }
+
+    // Function to calculate total shift duration (end - start, including break)
+    function calculateTotalShiftHours(startTime, endTime) {
+        if (!startTime || !endTime) return null;
+        
+        const start = new Date('2000-01-01T' + startTime + ':00');
+        let end = new Date('2000-01-01T' + endTime + ':00');
+        
+        // Handle overnight shifts (end time is next day)
+        if (end <= start) {
+            end.setDate(end.getDate() + 1);
+        }
+        
+        const diffMs = end - start;
+        const totalHours = diffMs / (1000 * 60 * 60);
+        
+        return totalHours;
+    }
+    
+    // Function to calculate expected total shift duration (normal work hours + break)
+    function calculateExpectedTotalHours(normalWorkHours, breakMinutes) {
+        const breakHours = (parseInt(breakMinutes) || 0) / 60;
+        return normalWorkHours + breakHours;
+    }
+
+    // Function to get normal hours based on department
+    function getNormalHours(department) {
+        const dept = (department || '').toLowerCase().trim();
+        if (dept === 'manager' || dept === 'supervisor') {
+            return 12;
+        }
+        return 7.5;
+    }
+
+    // Function to format hours display
+    function formatHours(hours) {
+        if (hours === null || isNaN(hours)) return 'N/A';
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        if (m === 0) {
+            return `${h} hours`;
+        }
+        return `${h}h ${m}m`;
+    }
+
+    // Function to validate time is within 6:00 AM - 11:00 PM
+    function validateTimeRange(timeString) {
+        if (!timeString) return { valid: false, message: 'Time is required' };
+        
+        const [hours, minutes] = timeString.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes;
+        
+        const minMinutes = 6 * 60; // 6:00 AM = 360 minutes
+        const maxMinutes = 23 * 60; // 11:00 PM = 1380 minutes (23:00)
+        
+        if (totalMinutes < minMinutes || totalMinutes > maxMinutes) {
+            return {
+                valid: false,
+                message: `Time must be between 6:00 AM and 11:00 PM. You entered ${timeString}`
+            };
+        }
+        
+        return { valid: true };
+    }
+
+    // Update assign panel hours calculation
+    function updateAssignHoursCalculation() {
+        const startTime = document.getElementById('assignStartTime').value;
+        const endTime = document.getElementById('assignEndTime').value;
+        const breakMinutes = document.getElementById('assignBreakMinutes').value || 0;
+        const department = document.getElementById('assignDepartment').value;
+        const isRestDay = assignRestDayCheckbox && assignRestDayCheckbox.checked;
+        const calcDisplay = document.getElementById('assignCalculatedHours');
+        const normalHoursNote = document.getElementById('assignNormalHoursNote');
+        
+        if (!calcDisplay) return;
+        
+        // Update normal hours note based on department
+        if (normalHoursNote) {
+            const normalHours = getNormalHours(department);
+            if (department && department.toLowerCase().trim() === 'manager') {
+                normalHoursNote.innerHTML = 'Manager: <strong>12 hours</strong><br>Other Staff: 7.5 hours';
+            } else if (department && department.toLowerCase().trim() === 'supervisor') {
+                normalHoursNote.innerHTML = 'Supervisor: <strong>12 hours</strong><br>Other Staff: 7.5 hours';
+            } else {
+                normalHoursNote.innerHTML = 'Manager & Supervisor: 12 hours<br>Other Staff: <strong>7.5 hours</strong>';
+            }
+        }
+        
+        if (isRestDay) {
+            calcDisplay.textContent = 'Rest Day - No hours calculated';
+            calcDisplay.className = 'text-xs text-gray-500 italic';
+            return;
+        }
+        
+        const totalShiftHours = calculateTotalShiftHours(startTime, endTime);
+        if (totalShiftHours === null) {
+            calcDisplay.textContent = 'Enter start and end time to calculate';
+            calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+        } else {
+            const normalWorkHours = getNormalHours(department);
+            const breakHours = (parseInt(breakMinutes) || 0) / 60;
+            const expectedTotalHours = calculateExpectedTotalHours(normalWorkHours, breakMinutes);
+            const hoursFormatted = formatHours(totalShiftHours);
+            const diff = totalShiftHours - expectedTotalHours;
+            
+            // Show work hours and break separately
+            const workHours = totalShiftHours - breakHours;
+            const workHoursFormatted = formatHours(workHours);
+            
+            if (Math.abs(diff) < 0.1) {
+                calcDisplay.innerHTML = `Total: ${hoursFormatted} (Work: ${workHoursFormatted} + Break: ${formatHours(breakHours)})<br><span class="text-green-600">✓ Matches expected: ${formatHours(normalWorkHours)} work + ${formatHours(breakHours)} break</span>`;
+                calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+            } else if (diff > 0) {
+                calcDisplay.innerHTML = `Total: ${hoursFormatted} (Work: ${workHoursFormatted} + Break: ${formatHours(breakHours)})<br><span class="text-orange-600">+${formatHours(diff)} over expected (${formatHours(expectedTotalHours)})</span>`;
+                calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+            } else {
+                calcDisplay.innerHTML = `Total: ${hoursFormatted} (Work: ${workHoursFormatted} + Break: ${formatHours(breakHours)})<br><span class="text-red-600">${formatHours(Math.abs(diff))} under expected (${formatHours(expectedTotalHours)})</span>`;
+                calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+            }
+        }
+    }
+
+    // Update edit modal hours calculation
+    function updateEditHoursCalculation() {
+        const startTime = document.getElementById('editStartTime').value;
+        const endTime = document.getElementById('editEndTime').value;
+        const breakMinutes = document.getElementById('editBreakMinutes').value || 0;
+        const department = document.getElementById('editDepartment').value;
+        const calcDisplay = document.getElementById('editCalculatedHours');
+        const normalHoursNote = document.getElementById('editNormalHoursNote');
+        
+        if (!calcDisplay) return;
+        
+        // Update normal hours note based on department
+        if (normalHoursNote) {
+            const normalHours = getNormalHours(department);
+            if (department && department.toLowerCase().trim() === 'manager') {
+                normalHoursNote.innerHTML = 'Manager: <strong>12 hours</strong><br>Other Staff: 7.5 hours';
+            } else if (department && department.toLowerCase().trim() === 'supervisor') {
+                normalHoursNote.innerHTML = 'Supervisor: <strong>12 hours</strong><br>Other Staff: 7.5 hours';
+            } else {
+                normalHoursNote.innerHTML = 'Manager & Supervisor: 12 hours<br>Other Staff: <strong>7.5 hours</strong>';
+            }
+        }
+        
+        const totalShiftHours = calculateTotalShiftHours(startTime, endTime);
+        if (totalShiftHours === null) {
+            calcDisplay.textContent = 'Enter start and end time to calculate';
+            calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+        } else {
+            const normalWorkHours = getNormalHours(department);
+            const breakHours = (parseInt(breakMinutes) || 0) / 60;
+            const expectedTotalHours = calculateExpectedTotalHours(normalWorkHours, breakMinutes);
+            const hoursFormatted = formatHours(totalShiftHours);
+            const diff = totalShiftHours - expectedTotalHours;
+            
+            // Show work hours and break separately
+            const workHours = totalShiftHours - breakHours;
+            const workHoursFormatted = formatHours(workHours);
+            
+            if (Math.abs(diff) < 0.1) {
+                calcDisplay.innerHTML = `Total: ${hoursFormatted} (Work: ${workHoursFormatted} + Break: ${formatHours(breakHours)})<br><span class="text-green-600">✓ Matches expected: ${formatHours(normalWorkHours)} work + ${formatHours(breakHours)} break</span>`;
+                calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+            } else if (diff > 0) {
+                calcDisplay.innerHTML = `Total: ${hoursFormatted} (Work: ${workHoursFormatted} + Break: ${formatHours(breakHours)})<br><span class="text-orange-600">+${formatHours(diff)} over expected (${formatHours(expectedTotalHours)})</span>`;
+                calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+            } else {
+                calcDisplay.innerHTML = `Total: ${hoursFormatted} (Work: ${workHoursFormatted} + Break: ${formatHours(breakHours)})<br><span class="text-red-600">${formatHours(Math.abs(diff))} under expected (${formatHours(expectedTotalHours)})</span>`;
+                calcDisplay.className = 'text-xs text-gray-600 font-semibold';
+            }
+        }
+    }
+
+    // Add event listeners for assign panel time inputs
+    const assignStartTimeEl = document.getElementById('assignStartTime');
+    const assignEndTimeEl = document.getElementById('assignEndTime');
+    const assignBreakMinutesEl = document.getElementById('assignBreakMinutes');
+    
+    if (assignStartTimeEl) {
+        assignStartTimeEl.addEventListener('input', updateAssignHoursCalculation);
+        assignStartTimeEl.addEventListener('change', updateAssignHoursCalculation);
+    }
+    if (assignEndTimeEl) {
+        assignEndTimeEl.addEventListener('input', updateAssignHoursCalculation);
+        assignEndTimeEl.addEventListener('change', updateAssignHoursCalculation);
+    }
+    if (assignBreakMinutesEl) {
+        assignBreakMinutesEl.addEventListener('input', updateAssignHoursCalculation);
+        assignBreakMinutesEl.addEventListener('change', updateAssignHoursCalculation);
+    }
+    if (assignDepartment) {
+        assignDepartment.addEventListener('change', updateAssignHoursCalculation);
+    }
+
+    // Add event listeners for edit modal time inputs
+    const editStartTimeEl = document.getElementById('editStartTime');
+    const editEndTimeEl = document.getElementById('editEndTime');
+    const editBreakMinutesEl = document.getElementById('editBreakMinutes');
+    const editDepartmentEl = document.getElementById('editDepartment');
+    
+    if (editStartTimeEl) {
+        editStartTimeEl.addEventListener('input', updateEditHoursCalculation);
+        editStartTimeEl.addEventListener('change', updateEditHoursCalculation);
+    }
+    if (editEndTimeEl) {
+        editEndTimeEl.addEventListener('input', updateEditHoursCalculation);
+        editEndTimeEl.addEventListener('change', updateEditHoursCalculation);
+    }
+    if (editBreakMinutesEl) {
+        editBreakMinutesEl.addEventListener('input', updateEditHoursCalculation);
+        editBreakMinutesEl.addEventListener('change', updateEditHoursCalculation);
+    }
+    if (editDepartmentEl) {
+        editDepartmentEl.addEventListener('input', updateEditHoursCalculation);
+        editDepartmentEl.addEventListener('change', updateEditHoursCalculation);
     }
 
     // Assign Shifts button (AJAX behavior)
@@ -434,6 +718,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isRestDay && (!startTime || !endTime)) {
                 alert('Please provide both start and end times (or check Rest Day).');
                 return;
+            }
+
+            // Validate time ranges (6:00 AM - 11:00 PM)
+            if (!isRestDay) {
+                const startValidation = validateTimeRange(startTime);
+                if (!startValidation.valid) {
+                    alert(startValidation.message);
+                    return;
+                }
+                
+                const endValidation = validateTimeRange(endTime);
+                if (!endValidation.valid) {
+                    alert(endValidation.message);
+                    return;
+                }
             }
 
             // Map day key to offset from currentWeekStart (mon=0..sun=6)
@@ -616,8 +915,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const startTime = td.getAttribute('data-start_time') || '';
         const endTime = td.getAttribute('data-end_time') || '';
         const breakMinutes = td.getAttribute('data-break_minutes') || '';
-    const restDayFlag = td.getAttribute('data-rest_day') || '0';
-        const department = td.getAttribute('data-department') || (document.getElementById('assignDepartment') ? document.getElementById('assignDepartment').value : 'General');
+        const restDayFlag = td.getAttribute('data-rest_day') || '0';
+        
+        // Get department: first from cell data, then from user lookup, then fallback
+        let department = td.getAttribute('data-department') || '';
+        if (!department && userId) {
+            const userLookup = users.find(u => String(u.id) === String(userId));
+            if (userLookup && userLookup.department) {
+                department = userLookup.department;
+            }
+        }
+        if (!department) {
+            department = (document.getElementById('assignDepartment') ? document.getElementById('assignDepartment').value : '') || 'General';
+        }
 
         // Parse date and find weekday
         const d = new Date(dateStr + 'T00:00:00');
@@ -689,13 +999,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     assignDeptEl.insertBefore(opt, assignDeptEl.firstChild);
                     assignDeptEl.selectedIndex = 0;
                 }
-            }
-
-            // Users: select the clicked user in the multi-select
-            const assignUsersEl = document.getElementById('assignUsers');
-            if (assignUsersEl) {
-                for (let i = 0; i < assignUsersEl.options.length; i++) {
-                    assignUsersEl.options[i].selected = (String(assignUsersEl.options[i].value) === String(userId));
+                
+                // Filter employee list based on selected department
+                // Use setTimeout to ensure the department is set first, then filter
+                setTimeout(() => {
+                    updateEmployeeList();
+                    
+                    // After filtering, select the clicked user in the multi-select
+                    const assignUsersEl = document.getElementById('assignUsers');
+                    if (assignUsersEl) {
+                        // Clear previous selections first
+                        for (let i = 0; i < assignUsersEl.options.length; i++) {
+                            assignUsersEl.options[i].selected = false;
+                        }
+                        // Select the clicked user
+                        for (let i = 0; i < assignUsersEl.options.length; i++) {
+                            if (String(assignUsersEl.options[i].value) === String(userId)) {
+                                assignUsersEl.options[i].selected = true;
+                                break;
+                            }
+                        }
+                    }
+                }, 50);
+            } else {
+                // If department element doesn't exist, just select the user
+                const assignUsersEl = document.getElementById('assignUsers');
+                if (assignUsersEl) {
+                    for (let i = 0; i < assignUsersEl.options.length; i++) {
+                        assignUsersEl.options[i].selected = (String(assignUsersEl.options[i].value) === String(userId));
+                    }
                 }
             }
 
@@ -726,6 +1058,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const assignEditShiftIdEl = document.getElementById('assignEditShiftId');
             if (assignEditShiftIdEl) assignEditShiftIdEl.value = shiftId || '';
         } catch (e) { console.debug('failed to set assignEditShiftId', e); }
+        
+        // Update hours calculation after populating modal
+        setTimeout(() => {
+            updateEditHoursCalculation();
+            updateAssignHoursCalculation();
+        }, 100);
     };
 
     // assign-panel Edit button behavior: update the selected shift using the assign panel values
@@ -760,6 +1098,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isRestDay && (!startTime || !endTime)) {
                 alert('Please provide both start and end times (or check Rest Day).');
                 return;
+            }
+
+            // Validate time ranges (6:00 AM - 11:00 PM)
+            if (!isRestDay) {
+                const startValidation = validateTimeRange(startTime);
+                if (!startValidation.valid) {
+                    alert(startValidation.message);
+                    return;
+                }
+                
+                const endValidation = validateTimeRange(endTime);
+                if (!endValidation.valid) {
+                    alert(endValidation.message);
+                    return;
+                }
             }
 
             // compute date string for the selected day relative to currentWeekStart
@@ -857,6 +1210,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!userId || !date || !start_time || !end_time) {
                 alert('Please fill user, date, start and end time.');
+                return;
+            }
+
+            // Validate time ranges (6:00 AM - 11:00 PM)
+            const startValidation = validateTimeRange(start_time);
+            if (!startValidation.valid) {
+                alert(startValidation.message);
+                return;
+            }
+            
+            const endValidation = validateTimeRange(end_time);
+            if (!endValidation.valid) {
+                alert(endValidation.message);
                 return;
             }
 

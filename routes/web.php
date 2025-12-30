@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/leave-application', [\App\Http\Controllers\LeaveController::class, 'application'])->name('leave-application');
     Route::post('/leave-application', [\App\Http\Controllers\LeaveController::class, 'store'])->name('leave-application.store');
     Route::get('/leave-status', [\App\Http\Controllers\LeaveController::class, 'status'])->name('leave-status');
+    Route::get('/leave/{leave}/attachment', [\App\Http\Controllers\LeaveController::class, 'downloadAttachment'])->name('leave.attachment');
     // Staff overtime routes
     Route::get('/overtime-applyOt', [\App\Http\Controllers\OvertimeController::class, 'apply'])->name('applyOt');
     Route::get('/overtime-statusOt', [\App\Http\Controllers\OvertimeController::class, 'status'])->name('statusOt');
@@ -64,11 +65,15 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
     // Staff management routes
     Route::get('/payslip', [\App\Http\Controllers\PayrollController::class, 'staffPayroll'])->name('payroll');
+    Route::post('/payslip/update-bonus', [\App\Http\Controllers\PayrollController::class, 'updateBonus'])->name('payroll.update-bonus');
+    Route::post('/payslip/publish', [\App\Http\Controllers\PayrollController::class, 'publishPayroll'])->name('payroll.publish');
+    Route::post('/payslip/sync', [\App\Http\Controllers\PayrollController::class, 'syncPayroll'])->name('payroll.sync');
     Route::get('/staffPayslip', [\App\Http\Controllers\PayrollController::class, 'staffPayslip'])->name('payslip');
     Route::get('/payslip/{userId}/{month}', [\App\Http\Controllers\PayrollController::class, 'getStaffPayslip'])->name('payslip.get');
     Route::get('/payslip/{userId}/{month}/pdf', [\App\Http\Controllers\PayrollController::class, 'exportStaffPayslipPdf'])->name('payslip.pdf');
     Route::post('/payslip/{userId}/{month}/email', [\App\Http\Controllers\PayrollController::class, 'emailStaffPayslip'])->name('payslip.email');
     Route::get('staff-leave-status', [App\Http\Controllers\LeaveController::class, 'staffLeaveStatus'])->name('staff-leave-status');
+    Route::get('/leave/{leave}/attachment', [App\Http\Controllers\LeaveController::class, 'downloadAttachment'])->name('leave.attachment');
     Route::get('/manage-staff', [StaffController::class, 'index'])->name('manage-staff');
     Route::get('/staff-timetable', [App\Http\Controllers\StaffTimetableController::class, 'index'])->name('staff-timetable');
     Route::post('/shifts', [App\Http\Controllers\StaffTimetableController::class, 'store'])->name('shifts.store');
@@ -76,6 +81,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/shifts/{shift}', [App\Http\Controllers\StaffTimetableController::class, 'update'])->name('shifts.update');
     Route::delete('/shifts/{shift}', [App\Http\Controllers\StaffTimetableController::class, 'destroy'])->name('shifts.destroy');
     Route::get('/staff/download-template', [StaffController::class, 'downloadTemplate'])->name('staff.download-template');
+    Route::get('/staff/{user}', [StaffController::class, 'show'])->name('staff.show');
+    Route::put('/staff/{user}', [StaffController::class, 'update'])->name('staff.update');
     Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
         
     // Staff registration route

@@ -17,11 +17,9 @@ if ($currentHour < 12) {
 
 // Placeholder for notification status
 $overtimeApproved = true; // Assume true for design demonstration
-$leaveTimetableUpdated = true; // Assume true for design demonstration
 ?>
 <?php
 use App\Models\Overtime;
-use App\Models\Leave;
 use App\Models\OTClaim;
 
 // Approved overtime (summary and full list)
@@ -33,33 +31,56 @@ $approvedOT = $staffId ? Overtime::where('staff_id', $staffId)
     ->get() : collect();
 $approvedCount = $approvedOT->count();
 
-// Salary / OT claims (recent) - query through payroll relation to get claims for this staff
+// Salary / OT claims (recent) - query payroll claims for this staff
 $staffId = $staff ? $staff->id : null;
 $salaryClaims = collect();
 if ($staffId) {
-    $salaryClaims = OTClaim::whereHas('payroll', function($q) use ($staffId) {
-            $q->whereHas('user.staff', function($sq) use ($staffId) {
-                $sq->where('staff.id', $staffId);
-            });
-        })
-        ->orWhereHas('overtime', function($q) use ($staffId) {
-            $q->where('staff_id', $staffId);
-        })
-        ->orWhereHas('leave', function($q) use ($staffId) {
-            $q->where('staff_id', $staffId);
-        })
-        ->orderBy('created_at', 'desc')
-        ->take(2)
-        ->get();
+    // Get all overtime IDs for this staff
+    $overtimeIds = Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+    
+    if (!empty($overtimeIds)) {
+        // Get all payroll claims and filter by checking if ot_ids contains any of this staff's overtime IDs
+        $allPayrollClaims = OTClaim::where('claim_type', 'payroll')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Filter claims where ot_ids array contains any of this staff's overtime IDs
+        $salaryClaims = $allPayrollClaims->filter(function($claim) use ($overtimeIds) {
+            $claimOtIds = $claim->ot_ids ?? [];
+            if (is_string($claimOtIds)) {
+                $claimOtIds = json_decode($claimOtIds, true) ?? [];
+            }
+            return !empty(array_intersect($overtimeIds, $claimOtIds));
+        })->values();
+    }
 }
 
-// Replacement leave schedule for this user
-$staff = $user->staff;
-$staffId = $staff ? $staff->id : null;
-$replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
-    ->whereHas('leaveType', function($q){ $q->where('type_name', 'replacement'); })
-    ->orderBy('start_date', 'desc')
-    ->get() : collect();
+// Replacement leave claims - query approved replacement leave claims for this staff
+$replacementLeaveClaims = collect();
+if ($staffId) {
+    // Get all overtime IDs for this staff
+    $overtimeIds = Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+    
+    if (!empty($overtimeIds)) {
+        // Get all replacement leave claims and filter by checking if ot_ids contains any of this staff's overtime IDs
+        $allReplacementClaims = OTClaim::where('claim_type', 'replacement_leave')
+            ->where('status', 'approved')
+            ->orderBy('updated_at', 'desc')
+            ->get();
+        
+        // Filter claims where ot_ids array contains any of this staff's overtime IDs
+        $replacementLeaveClaims = $allReplacementClaims->filter(function($claim) use ($overtimeIds) {
+            $claimOtIds = $claim->ot_ids ?? [];
+            if (is_string($claimOtIds)) {
+                $claimOtIds = json_decode($claimOtIds, true) ?? [];
+            }
+            return !empty(array_intersect($overtimeIds, $claimOtIds));
+        })->values();
+        
+        // Load leave relationship for claims that have it
+        $replacementLeaveClaims->load('leave');
+    }
+}
 ?>
 
 <div class="mb-6">
@@ -118,11 +139,14 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
-                @forelse($approvedOT as $ot)
+                @forelse($approvedOT->take(2) as $ot)
                 <div class="flex items-center space-x-2 p-2 bg-green-50 rounded hover:bg-green-100 transition cursor-pointer text-xs md:text-sm">
                     <div class="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-800 truncate">{{ $ot->ot_date->format('M d') }} - {{ number_format($ot->hours,1) }}hrs Approved</p>
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-gray-800 truncate">{{ $ot->ot_date->format('M d') }} - {{ number_format($ot->hours,1) }}hrs</p>
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded">✓ Approved</span>
+                        </div>
                         <p class="text-xs text-gray-500">Approved {{ $ot->updated_at->diffForHumans() }}</p>
                     </div>
                 </div>
@@ -153,12 +177,22 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
-                @forelse($salaryClaims as $claim)
-                <div class="flex items-center space-x-2 p-2 bg-orange-50 rounded hover:bg-orange-100 transition cursor-pointer text-xs md:text-sm">
-                    <div class="w-1.5 h-1.5 bg-orange-500 rounded-full flex-shrink-0"></div>
+                @forelse($salaryClaims->take(2) as $claim)
+                @php
+                    $amounts = $claim->calculatePayrollAmounts();
+                    $totalPay = $amounts['total_pay'] ?? 0;
+                    $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
+                @endphp
+                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : 'bg-orange-50' }} rounded hover:{{ $isApproved ? 'bg-green-100' : 'bg-orange-100' }} transition cursor-pointer text-xs md:text-sm">
+                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : 'bg-orange-500' }} rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-800 truncate">{{ $claim->month_label ?? ($claim->created_at->format('F Y')) }} - RM {{ number_format($claim->amount ?? ($claim->hours * ($claim->rate ?? 25)), 2) }}</p>
-                        <p class="text-xs text-gray-500">{{ ucfirst($claim->status ?? 'pending') }}</p>
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-gray-800 truncate">{{ $claim->created_at->format('F Y') }} - RM {{ number_format($totalPay, 2) }}</p>
+                            @if($isApproved)
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded">✓ Approved</span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-500">{{ ucfirst($claim->status ?? 'pending') }} • {{ $claim->updated_at->diffForHumans() }}</p>
                     </div>
                 </div>
                 @empty
@@ -174,35 +208,52 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
         </div>
     </div>
 
-    <!-- Replacement Leave Updates Notification -->
+    <!-- Replacement Leave Claims Approved Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
         <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
             <div class="flex items-center space-x-2">
                 <svg class="w-4 md:w-5 h-4 md:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <h2 class="text-sm md:text-lg font-bold text-white">Timetable Updates</h2>
+                <h2 class="text-sm md:text-lg font-bold text-white">Replacement Leave</h2>
             </div>
             <span class="bg-white text-purple-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
-                {{ $replacementLeaves->count() }}
+                {{ $replacementLeaveClaims->count() }}
             </span>
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
-                @forelse($replacementLeaves->take(2) as $rl)
-                <div class="flex items-center space-x-2 p-2 bg-purple-50 rounded hover:bg-purple-100 transition cursor-pointer text-xs md:text-sm">
-                    <div class="w-1.5 h-1.5 bg-purple-500 rounded-full flex-shrink-0"></div>
+                @forelse($replacementLeaveClaims->take(2) as $claim)
+                @php
+                    $leave = $claim->leave;
+                    $replacementDays = $claim->replacement_days ?? 0;
+                    $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
+                @endphp
+                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : 'bg-purple-50' }} rounded hover:{{ $isApproved ? 'bg-green-100' : 'bg-purple-100' }} transition cursor-pointer text-xs md:text-sm">
+                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : 'bg-purple-500' }} rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-800 truncate">{{ $rl->start_date->format('M d') }} - {{ ucfirst($rl->status) }}</p>
-                        <p class="text-xs text-gray-500">{{ $rl->updated_at->diffForHumans() }}</p>
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-gray-800 truncate">
+                                @if($leave)
+                                    {{ $leave->start_date->format('M d') }} - {{ number_format($replacementDays, 1) }} days
+                                @else
+                                    {{ number_format($replacementDays, 1) }} days Replacement
+                                @endif
+                            </p>
+                            @if($isApproved)
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded">✓ Approved</span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-500">Approved {{ $claim->updated_at->diffForHumans() }}</p>
                     </div>
                 </div>
                 @empty
-                <div class="text-xs text-gray-600">No timetable updates</div>
+                <div class="text-xs text-gray-600">No replacement leave claims approved</div>
                 @endforelse
+                <div class="h-3"></div>
                 <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button onclick="showLeaveUpdatesSection()" class="block w-full text-center text-xs font-semibold text-purple-600 hover:text-purple-700 transition">
-                        View Schedule →
+                    <button onclick="showReplacementLeaveSection()" class="block w-full text-center text-xs font-semibold text-purple-600 hover:text-purple-700 transition">
+                        View Details →
                     </button>
                 </div>
             </div>
@@ -233,7 +284,7 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
                         <div class="flex items-center space-x-2 mb-2">
-                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">Approved</span>
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">✓ Approved</span>
                             <span class="text-xs text-gray-500">{{ $otItem->updated_at->diffForHumans() }}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 mb-2">Overtime Request - {{ $otItem->ot_date->format('F d, Y') }}</h3>
@@ -279,13 +330,18 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
         
         <div class="divide-y divide-gray-200">
             @forelse($salaryClaims as $claim)
-            <div class="p-6 bg-yellow-50 border-l-4 border-yellow-500">
+            @php
+                $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
+                $bgColor = $isApproved ? 'bg-green-50' : 'bg-yellow-50';
+                $borderColor = $isApproved ? 'border-green-500' : 'border-yellow-500';
+            @endphp
+            <div class="p-6 {{ $bgColor }} border-l-4 {{ $borderColor }}">
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
                         <div class="flex items-center space-x-2 mb-2">
                             @php
                                 $status = strtolower($claim->status ?? 'pending');
-                                $statusLabel = $status === 'approved' ? 'Approved for Payment' : ($status === 'pending' ? 'Pending Review' : ucfirst($status));
+                                $statusLabel = $status === 'approved' ? '✓ Approved' : ($status === 'pending' ? 'Pending Review' : ucfirst($status));
                                 $statusClass = $status === 'approved' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
                                 $payrollAmounts = $claim->calculatePayrollAmounts();
                                 $totalHours = ($payrollAmounts['fulltime_hours'] ?? 0) + ($payrollAmounts['public_holiday_hours'] ?? 0);
@@ -339,66 +395,90 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
     </div>
 </div>
 
-<!-- Replacement Leave Schedule Section (Hidden by default) -->
-<div class="mt-8 hidden" id="leave-updates-section">
+<!-- Replacement Leave Claims Section (Hidden by default) -->
+<div class="mt-8 hidden" id="replacement-leave-section">
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
         <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);" class="px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <h2 class="text-xl font-bold text-white">Replacement Leave Schedule</h2>
+                <h2 class="text-xl font-bold text-white">Approved Replacement Leave Claims</h2>
             </div>
-            <button onclick="hideLeaveUpdatesSection()" class="text-white hover:text-purple-100 transition">
+            <button onclick="hideReplacementLeaveSection()" class="text-white hover:text-purple-100 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
-
-        <div class="p-6">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approved By</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-
-                        @forelse($replacementLeaves as $r)
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {{ $r->start_date->format('Y-m-d') }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ Illuminate\Support\Str::limit($r->reason, 80) }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @if($r->status === 'approved')
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
-                                @elseif($r->status === 'pending')
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                @else
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">{{ ucfirst($r->status) }}</span>
+        
+        <div class="divide-y divide-gray-200">
+            @forelse($replacementLeaveClaims as $claim)
+            @php
+                $leave = $claim->leave;
+                $replacementDays = $claim->replacement_days ?? 0;
+                $totalHours = ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
+            @endphp
+            <div class="p-6 bg-purple-50 border-l-4 border-purple-500">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">✓ Approved</span>
+                            <span class="text-xs text-gray-500">{{ $claim->updated_at->diffForHumans() }}</span>
+                        </div>
+                        <h3 class="font-bold text-gray-900 mb-2">
+                            @if($leave)
+                                Replacement Leave - {{ $leave->start_date->format('F d, Y') }}
+                            @else
+                                Replacement Leave Claim
+                            @endif
+                        </h3>
+                        <div class="grid grid-cols-3 gap-4 mb-3">
+                            <div>
+                                <p class="text-sm text-gray-600">Replacement Days:</p>
+                                <p class="text-lg font-bold text-gray-800">{{ number_format($replacementDays, 1) }} days</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Total OT Hours:</p>
+                                <p class="text-lg font-bold text-gray-800">{{ number_format($totalHours, 1) }} hours</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Breakdown:</p>
+                                <p class="text-sm font-bold text-gray-800">
+                                    @if(($claim->fulltime_hours ?? 0) > 0)
+                                        {{ number_format($claim->fulltime_hours, 1) }}hrs Fulltime
+                                    @endif
+                                    @if(($claim->fulltime_hours ?? 0) > 0 && ($claim->public_holiday_hours ?? 0) > 0)
+                                        <br/>
+                                    @endif
+                                    @if(($claim->public_holiday_hours ?? 0) > 0)
+                                        {{ number_format($claim->public_holiday_hours, 1) }}hrs Public Holiday
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                        @if($leave)
+                        <div class="bg-white p-3 rounded border border-purple-200 text-sm">
+                            <p class="text-gray-700">
+                                <span class="font-semibold">Leave Period:</span> 
+                                {{ $leave->start_date->format('M d, Y') }} 
+                                @if($leave->end_date && $leave->end_date != $leave->start_date)
+                                    to {{ $leave->end_date->format('M d, Y') }}
                                 @endif
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $r->approved_by ?? ($r->approved_at ? 'Admin' : '-') }}
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="4" class="px-6 py-8 text-center text-gray-500">No replacement leave records found</td>
-                        </tr>
-                        @endforelse
-
-                    </tbody>
-                </table>
+                            </p>
+                            @if($leave->reason)
+                            <p class="text-gray-700 mt-2">
+                                <span class="font-semibold">Reason:</span> {{ Illuminate\Support\Str::limit($leave->reason, 100) }}
+                            </p>
+                            @endif
+                        </div>
+                        @endif
+                    </div>
+                </div>
             </div>
+            @empty
+            <div class="p-6 text-sm text-gray-600">No approved replacement leave claims found.</div>
+            @endforelse
         </div>
     </div>
 </div>
@@ -423,13 +503,13 @@ $replacementLeaves = $staffId ? Leave::where('staff_id', $staffId)
         document.getElementById('salary-claims-section').classList.add('hidden');
     }
 
-    function showLeaveUpdatesSection() {
-        document.getElementById('leave-updates-section').classList.remove('hidden');
-        window.scrollTo({ top: document.getElementById('leave-updates-section').offsetTop, behavior: 'smooth' });
+    function showReplacementLeaveSection() {
+        document.getElementById('replacement-leave-section').classList.remove('hidden');
+        window.scrollTo({ top: document.getElementById('replacement-leave-section').offsetTop, behavior: 'smooth' });
     }
 
-    function hideLeaveUpdatesSection() {
-        document.getElementById('leave-updates-section').classList.add('hidden');
+    function hideReplacementLeaveSection() {
+        document.getElementById('replacement-leave-section').classList.add('hidden');
     }
 </script>
 

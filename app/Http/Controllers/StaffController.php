@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Staff;
+use App\Models\Admin;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class StaffController extends Controller
 {
@@ -81,11 +84,18 @@ class StaffController extends Controller
     {
         // Get all users with their staff/admin records, excluding seeded test users
         $excludedEmails = ['admin@gmail.com', 'staff@gmail.com'];
-        $users = User::with(['staff', 'admin'])
+        $allUsers = User::with(['staff', 'admin'])
             ->whereNotIn('email', $excludedEmails)
+            ->orderBy('created_at', 'desc')
             ->get();
         
-        return view('admin.manageStaff', compact('users'));
+        // Get latest 5 users
+        $latestUsers = $allUsers->take(5);
+        
+        return view('admin.manageStaff', [
+            'users' => $allUsers,
+            'latestUsers' => $latestUsers
+        ]);
     }
     
     /**
@@ -104,6 +114,148 @@ class StaffController extends Controller
         ];
         
         return $colors[strtolower($department)] ?? 'bg-gray-100 text-gray-800';
+    }
+
+    /**
+     * Show staff details (for AJAX)
+     */
+    public function show(User $user)
+    {
+        try {
+            $user->load(['staff', 'admin']);
+            
+            return response()->json([
+                'success' => true,
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load staff details: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update staff member
+     */
+    public function update(Request $request, User $user)
+    {
+        try {
+            DB::beginTransaction();
+            
+            // Validate request
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+                'employee_id' => 'required|string|max:255',
+                'department' => 'required|string|max:255',
+                'status' => 'required|string|in:active,inactive',
+                'role' => 'required|string|in:admin,staff',
+                'phone' => 'nullable|string|max:255',
+                'address' => 'nullable|string',
+                'hire_date' => 'nullable|date',
+                'appointment_date' => 'nullable|date',
+                'salary' => 'nullable|numeric|min:0',
+                'admin_level' => 'nullable|string|max:255',
+            ]);
+            
+            // Update user
+            $user->update([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'role' => $validated['role'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+            ]);
+            
+            // Update staff or admin record
+            if ($validated['role'] === 'staff') {
+                if ($user->staff) {
+                    $user->staff->update([
+                        'employee_id' => $validated['employee_id'],
+                        'department' => $validated['department'],
+                        'status' => $validated['status'],
+                        'hire_date' => $validated['hire_date'] ?? null,
+                        'salary' => $validated['salary'] ?? null,
+                    ]);
+                } else {
+                    // Create staff record if it doesn't exist
+                    Staff::create([
+                        'user_id' => $user->id,
+                        'employee_id' => $validated['employee_id'],
+                        'department' => $validated['department'],
+                        'status' => $validated['status'],
+                        'hire_date' => $validated['hire_date'] ?? null,
+                        'salary' => $validated['salary'] ?? null,
+                    ]);
+                }
+                
+                // Delete admin record if exists
+                if ($user->admin) {
+                    $user->admin->delete();
+                }
+            } else {
+                // Admin role
+                if ($user->admin) {
+                    $user->admin->update([
+                        'employee_id' => $validated['employee_id'],
+                        'department' => $validated['department'],
+                        'status' => $validated['status'],
+                        'admin_level' => $validated['admin_level'] ?? 'admin',
+                        'appointment_date' => $validated['appointment_date'] ?? null,
+                    ]);
+                } else {
+                    // Create admin record if it doesn't exist
+                    Admin::create([
+                        'user_id' => $user->id,
+                        'employee_id' => $validated['employee_id'],
+                        'department' => $validated['department'],
+                        'status' => $validated['status'],
+                        'admin_level' => $validated['admin_level'] ?? 'admin',
+                        'appointment_date' => $validated['appointment_date'] ?? null,
+                    ]);
+                }
+                
+                // Delete staff record if exists
+                if ($user->staff) {
+                    $user->staff->delete();
+                }
+            }
+            
+            DB::commit();
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Staff updated successfully'
+                ]);
+            }
+            
+            return redirect()->route('admin.manage-staff')
+                ->with('success', "Staff member '{$user->name}' has been updated successfully.");
+                
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to update staff: ' . $e->getMessage()
+                ], 500);
+            }
+            return redirect()->route('admin.manage-staff')
+                ->with('error', 'Failed to update staff member: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Leave;
 use App\Models\OTClaim;
 use Carbon\Carbon;
@@ -19,12 +20,39 @@ class LeaveController extends Controller
         $approvedOTClaims = OTClaim::whereHas('payroll', function($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
+            ->where('claim_type', 'payroll')
             ->approved()
             ->get();
 
         $totalOTHours = $approvedOTClaims->sum(function($claim) {
             return ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
         });
+
+        // Get approved replacement leave claims to add to balance
+        $approvedReplacementClaims = collect();
+        if ($staffId) {
+            $overtimeIds = \App\Models\Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+            if (!empty($overtimeIds)) {
+                $allReplacementClaims = OTClaim::where('claim_type', 'replacement_leave')
+                    ->where('status', 'approved')
+                    ->get();
+                
+                $approvedReplacementClaims = $allReplacementClaims->filter(function($claim) use ($overtimeIds) {
+                    $claimOtIds = $claim->ot_ids ?? [];
+                    if (is_string($claimOtIds)) {
+                        $claimOtIds = json_decode($claimOtIds, true) ?? [];
+                    }
+                    return !empty(array_intersect($overtimeIds, $claimOtIds));
+                });
+            }
+        }
+        
+        // Add replacement days from approved claims to total OT hours
+        $replacementClaimDays = $approvedReplacementClaims->sum(function($claim) {
+            return $claim->replacement_days ?? 0;
+        });
+        $replacementClaimHours = $replacementClaimDays * 8;
+        $totalOTHours += $replacementClaimHours;
 
         // Build leave balance map by reading `leave_balances` for this staff when available.
         $leaveBalance = [];
@@ -46,29 +74,50 @@ class LeaveController extends Controller
         $expectedTypes = ['annual','hospitalization','medical','emergency','replacement','marriage','unpaid'];
         foreach ($expectedTypes as $typeName) {
             $key = strtolower($typeName);
-            if (isset($balances[$key])) {
+            // Always recalculate replacement leave from OT hours (don't use stored balance)
+            if ($typeName === 'replacement') {
+                $replacementType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('replacement')])->first();
+                $max = floor($totalOTHours / 8);
+                $taken = 0;
+                if ($replacementType) {
+                    $taken = Leave::where('staff_id', $staffId)
+                        ->where('leave_type_id', $replacementType->id)
+                        ->where('status', 'approved')
+                        ->sum('total_days');
+                }
+                // Include approved replacement claim days in balance
+                $replacementClaimDays = $approvedReplacementClaims->sum(function($claim) {
+                    return $claim->replacement_days ?? 0;
+                });
+                $balance = max(0, $max - $taken);
+                $leaveBalance[$typeName] = [
+                    'max' => $max, 
+                    'taken' => (float)$taken, 
+                    'balance' => $balance,
+                    'ot_hours' => $totalOTHours,
+                    'approved_claims_days' => $replacementClaimDays
+                ];
+            } elseif (isset($balances[$key])) {
                 $b = $balances[$key];
+                // For unpaid leave, ensure max is 10 (even if balance record has 0)
+                if ($typeName === 'unpaid') {
+                    $max = 10;
+                    $taken = (float)$b->used_days;
+                    $balance = max(0, $max - $taken);
+                    $leaveBalance[$typeName] = [
+                        'max' => $max,
+                        'taken' => $taken,
+                        'balance' => $balance,
+                    ];
+                } else {
                 $leaveBalance[$typeName] = [
                     'max' => (float)$b->total_days,
                     'taken' => (float)$b->used_days,
                     'balance' => (float)$b->remaining_days,
                 ];
-            } else {
-                // special-case replacement: compute from OT hours if no balance row
-                if ($typeName === 'replacement') {
-                    $replacementType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('replacement')])->first();
-                    $max = floor($totalOTHours / 8);
-                    $taken = 0;
-                    if ($replacementType) {
-                        $taken = Leave::where('staff_id', $staffId)
-                            ->where('leave_type_id', $replacementType->id)
-                            ->where('status', 'approved')
-                            ->sum('total_days');
-                    }
-                    $leaveBalance[$typeName] = ['max' => $max, 'taken' => (float)$taken, 'balance' => max(0, $max - $taken)];
-                } else {
-                    $leaveBalance[$typeName] = $computeFallback($typeName);
                 }
+            } else {
+                $leaveBalance[$typeName] = $computeFallback($typeName);
             }
         }
 
@@ -103,37 +152,86 @@ class LeaveController extends Controller
         $approvedOTClaims = OTClaim::whereHas('payroll', function($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
+            ->where('claim_type', 'payroll')
             ->approved()
             ->get();
         $totalOTHours = $approvedOTClaims->sum(function($claim) {
             return ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
         });
 
+        // Get approved replacement leave claims to add to balance
+        $approvedReplacementClaims = collect();
+        if ($staffId) {
+            $overtimeIds = \App\Models\Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+            if (!empty($overtimeIds)) {
+                $allReplacementClaims = OTClaim::where('claim_type', 'replacement_leave')
+                    ->where('status', 'approved')
+                    ->get();
+                
+                $approvedReplacementClaims = $allReplacementClaims->filter(function($claim) use ($overtimeIds) {
+                    $claimOtIds = $claim->ot_ids ?? [];
+                    if (is_string($claimOtIds)) {
+                        $claimOtIds = json_decode($claimOtIds, true) ?? [];
+                    }
+                    return !empty(array_intersect($overtimeIds, $claimOtIds));
+                });
+            }
+        }
+        
+        // Add replacement days from approved claims to total OT hours
+        $replacementClaimDays = $approvedReplacementClaims->sum(function($claim) {
+            return $claim->replacement_days ?? 0;
+        });
+        $replacementClaimHours = $replacementClaimDays * 8;
+        $totalOTHours += $replacementClaimHours;
+
         $expectedTypes = ['annual','hospitalization','medical','emergency','replacement','marriage','unpaid'];
         foreach ($expectedTypes as $typeName) {
             $key = strtolower($typeName);
-            if (isset($balances[$key])) {
+            // Always recalculate replacement leave from OT hours (don't use stored balance)
+            if ($typeName === 'replacement') {
+                $replacementType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('replacement')])->first();
+                $max = floor($totalOTHours / 8);
+                $taken = 0;
+                if ($replacementType) {
+                    $taken = Leave::where('staff_id', $staffId)
+                        ->where('leave_type_id', $replacementType->id)
+                        ->where('status', 'approved')
+                        ->sum('total_days');
+                }
+                // Include approved replacement claim days in balance
+                $replacementClaimDays = $approvedReplacementClaims->sum(function($claim) {
+                    return $claim->replacement_days ?? 0;
+                });
+                $balance = max(0, $max - $taken);
+                $leaveBalance[$typeName] = [
+                    'max' => $max, 
+                    'taken' => (float)$taken, 
+                    'balance' => $balance,
+                    'ot_hours' => $totalOTHours,
+                    'approved_claims_days' => $replacementClaimDays
+                ];
+            } elseif (isset($balances[$key])) {
                 $b = $balances[$key];
+                // For unpaid leave, ensure max is 10 (even if balance record has 0)
+                if ($typeName === 'unpaid') {
+                    $max = 10;
+                    $taken = (float)$b->used_days;
+                    $balance = max(0, $max - $taken);
+                    $leaveBalance[$typeName] = [
+                        'max' => $max,
+                        'taken' => $taken,
+                        'balance' => $balance,
+                    ];
+                } else {
                 $leaveBalance[$typeName] = [
                     'max' => (float)$b->total_days,
                     'taken' => (float)$b->used_days,
                     'balance' => (float)$b->remaining_days,
                 ];
-            } else {
-                if ($typeName === 'replacement') {
-                    $replacementType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('replacement')])->first();
-                    $max = floor($totalOTHours / 8);
-                    $taken = 0;
-                    if ($replacementType) {
-                        $taken = Leave::where('staff_id', $staffId)
-                            ->where('leave_type_id', $replacementType->id)
-                            ->where('status', 'approved')
-                            ->sum('total_days');
-                    }
-                    $leaveBalance[$typeName] = ['max' => $max, 'taken' => (float)$taken, 'balance' => max(0, $max - $taken)];
-                } else {
-                    $leaveBalance[$typeName] = $this->getLeaveBalance($staffId, $typeName);
                 }
+            } else {
+                $leaveBalance[$typeName] = $this->getLeaveBalance($staffId, $typeName);
             }
         }
 
@@ -205,7 +303,7 @@ class LeaveController extends Controller
 
         // The auto-approval happens in the model's booted method automatically
 
-        return back()->with('success', "Leave request submitted! Status: " . ucfirst($leave->status));
+        return redirect()->route('staff.leave-status')->with('success', "Leave request submitted! Status: " . ucfirst($leave->status));
     }
 
     public function staffLeaveStatus()
@@ -218,6 +316,50 @@ class LeaveController extends Controller
             ->paginate(15);
 
         return view('admin.staffLeaveStatus', compact('staffLeaves'));
+    }
+
+    /**
+     * Download or view leave attachment
+     */
+    public function downloadAttachment(Leave $leave)
+    {
+        $user = Auth::user();
+        
+        // Eager load relationships
+        $leave->load('staff.user');
+        
+        // Check if attachment exists
+        if (!$leave->attachment) {
+            abort(404, 'Attachment not found');
+        }
+        
+        // Check permissions
+        // Admin can view any attachment, staff can only view their own
+        if ($user->isAdmin()) {
+            // Admin can view any attachment
+        } elseif ($user->isStaff()) {
+            // Staff can only view their own attachments
+            if (!$leave->staff || $leave->staff->user_id !== $user->id) {
+                abort(403, 'You do not have permission to view this attachment');
+            }
+        } else {
+            abort(403, 'Unauthorized');
+        }
+        
+        // Check if file exists
+        if (!Storage::disk('public')->exists($leave->attachment)) {
+            abort(404, 'File not found');
+        }
+        
+        // Get file path
+        $filePath = Storage::disk('public')->path($leave->attachment);
+        $fileName = basename($leave->attachment);
+        
+        // Return file response (for viewing in browser)
+        return response()->file($filePath, [
+            'Content-Type' => Storage::disk('public')->mimeType($leave->attachment),
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+        ]);
     }
 
     /**

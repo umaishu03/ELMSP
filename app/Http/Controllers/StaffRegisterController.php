@@ -253,13 +253,13 @@ class StaffRegisterController extends Controller
     private function getDefaultSalary($department)
     {
         $salaries = [
-            'manager' => 5000.00,
-            'supervisor' => 3500.00,
+            'manager' => 4000.00,
+            'supervisor' => 3000.00,
             'cashier' => 2000.00,
             'barista' => 1800.00,
             'joki' => 1600.00,
             'waiter' => 1500.00,
-            'kitchen' => 1700.00,
+            'kitchen' => 1800.00,
         ];
         
         return $salaries[$department] ?? 1500.00;

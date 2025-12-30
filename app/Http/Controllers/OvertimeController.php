@@ -85,7 +85,6 @@ class OvertimeController extends Controller
         $replacement_days = floor(($fulltime_hours + $public_holiday_hours) / 8);
 
         $claim = OTClaim::create([
-            'user_id' => $user->id,
             'claim_type' => $request->claim_type,
             'ot_ids' => $otIds,
             'fulltime_hours' => $fulltime_hours,

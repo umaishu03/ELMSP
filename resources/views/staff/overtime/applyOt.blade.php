@@ -40,7 +40,7 @@
                         <label class="block text-xs font-medium text-gray-600 mb-2">Employee ID</label>
                         <input type="text" 
                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-gray-100 text-gray-700" 
-                               value="{{ Auth::user()->employee_id ?? '' }}" 
+                               value="{{ Auth::user()->staff->employee_id ?? Auth::user()->admin->employee_id ?? 'Not assigned' }}" 
                                readonly />
                     </div>
                 </div>
@@ -93,7 +93,7 @@
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                             <i class="fas fa-calendar-day text-blue-600"></i>
-                            Restaurant Public Holidays (2025)
+                            Restaurant Public Holidays (2026)
                         </h3>
                         
                         <div class="bg-white rounded-lg overflow-hidden shadow-sm">
@@ -179,23 +179,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ========== PUBLIC HOLIDAYS SECTION ==========
 const publicHolidays = [
-    { name: "New Year's Day", date: "2025-01-01", day: "Wednesday" },
-    { name: "Chinese New Year", date: "2025-01-29", day: "Wednesday" },
-    { name: "Chinese New Year (2nd Day)", date: "2025-01-30", day: "Thursday" },
-    { name: "Federal Territory Day", date: "2025-02-01", day: "Saturday" },
-    { name: "Thaipusam", date: "2025-02-11", day: "Tuesday" },
-    { name: "Hari Raya Aidilfitri", date: "2025-03-31", day: "Monday" },
-    { name: "Hari Raya Aidilfitri (2nd Day)", date: "2025-04-01", day: "Tuesday" },
-    { name: "Labour Day", date: "2025-05-01", day: "Thursday" },
-    { name: "Vesak Day", date: "2025-05-12", day: "Monday" },
-    { name: "Agong's Birthday", date: "2025-06-07", day: "Saturday" },
-    { name: "Hari Raya Aidiladha", date: "2025-06-07", day: "Saturday" },
-    { name: "Awal Muharram", date: "2025-06-27", day: "Friday" },
-    { name: "Merdeka Day", date: "2025-08-31", day: "Sunday" },
-    { name: "Malaysia Day", date: "2025-09-16", day: "Tuesday" },
-    { name: "Prophet Muhammad's Birthday", date: "2025-09-05", day: "Friday" },
-    { name: "Deepavali", date: "2025-10-20", day: "Monday" },
-    { name: "Christmas Day", date: "2025-12-25", day: "Thursday" }
+    { name: "New Year's Day", date: "2026-01-01", day: "Thursday" },
+    { name: "Chinese New Year", date: "2026-02-17", day: "Tuesday" },
+    { name: "Chinese New Year (2nd Day)", date: "2026-02-18", day: "Wednesday" },
+    { name: "Federal Territory Day", date: "2026-02-01", day: "Sunday" },
+    { name: "Thaipusam", date: "2026-01-31", day: "Saturday" },
+    { name: "Hari Raya Aidilfitri", date: "2026-03-20", day: "Friday" },
+    { name: "Hari Raya Aidilfitri (2nd Day)", date: "2026-03-21", day: "Saturday" },
+    { name: "Labour Day", date: "2026-05-01", day: "Friday" },
+    { name: "Vesak Day", date: "2026-05-01", day: "Friday" },
+    { name: "Agong's Birthday", date: "2026-06-06", day: "Saturday" },
+    { name: "Hari Raya Aidiladha", date: "2026-05-27", day: "Wednesday" },
+    { name: "Awal Muharram", date: "2026-07-16", day: "Thursday" },
+    { name: "Merdeka Day", date: "2026-08-31", day: "Monday" },
+    { name: "Malaysia Day", date: "2026-09-16", day: "Wednesday" },
+    { name: "Prophet Muhammad's Birthday", date: "2026-08-25", day: "Tuesday" },
+    { name: "Deepavali", date: "2026-11-08", day: "Sunday" },
+    { name: "Christmas Day", date: "2026-12-25", day: "Friday" }
 ];
 
 // Get next public holiday

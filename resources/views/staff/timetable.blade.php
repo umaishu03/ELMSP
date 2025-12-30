@@ -31,9 +31,6 @@
         <thead class="bg-purple-50">
             <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
-                    #
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
                     Staff Name
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
@@ -66,7 +63,6 @@
             @foreach($staff as $index => $staffMember)
             @php $isCurrent = (isset($staffMember->user) && isset($staffMember->user->id) && $staffMember->user->id === auth()->id()); @endphp
             <tr class="border-b {{ $isCurrent ? 'bg-blue-50' : '' }}">
-                <td class="px-2 py-2 text-center">{{ $index + 1 }}</td>
                 <td class="px-2 py-2 font-semibold {{ $isCurrent ? 'text-blue-600' : '' }}">{{ $staffMember->user->name }}</td>
                 <td class="px-2 py-2 text-center text-gray-600">{{ $staffMember->department ?? '' }}</td>
                 @foreach($dates as $day)

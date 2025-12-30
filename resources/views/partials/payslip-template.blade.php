@@ -1,158 +1,623 @@
-<div class="payslip-document bg-white">
-    <!-- Payslip Header -->
-    <div class="border-b-2 border-gray-400 pb-6 mb-6">
-        <div class="flex justify-between items-start mb-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">PAYSLIP</h1>
-                <p class="text-gray-600 text-sm mt-1">{{ \Carbon\Carbon::create($month)->format('F Y') }}</p>
-            </div>
-            <div class="text-right text-gray-700 text-sm">
-                <p><span class="font-semibold">Employee ID:</span> {{ $user->employee_id }}</p>
-                <p><span class="font-semibold">Payroll Period:</span> {{ $month }}</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Employee Information -->
-    <div class="grid grid-cols-2 gap-8 mb-8 pb-6 border-b">
-        <div>
-            <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Employee Information</h3>
-            <div class="space-y-2 text-sm text-gray-700">
-                <div><span class="font-semibold">Name:</span> {{ $user->name }}</div>
-                <div><span class="font-semibold">Email:</span> {{ $user->email }}</div>
-                <div><span class="font-semibold">Phone:</span> {{ $user->phone ?? 'N/A' }}</div>
-            </div>
-        </div>
-        <div>
-            <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Employment Details</h3>
-            <div class="space-y-2 text-sm text-gray-700">
-                <div><span class="font-semibold">Department:</span> {{ $staff->department ?? 'N/A' }}</div>
-                <div><span class="font-semibold">Hire Date:</span> {{ $staff->hire_date->format('d M Y') ?? 'N/A' }}</div>
-                <div><span class="font-semibold">Role:</span> {{ ucfirst($user->role) }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Earnings Section -->
-    <div class="mb-8">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b-2 border-blue-500">Earnings</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-blue-50 p-4 rounded">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-gray-700 font-semibold">Basic Salary</span>
-                    <span class="text-gray-900 font-bold">RM {{ number_format($payroll->basic_salary, 2) }}</span>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payslip - {{ $user->name }} - {{ \Carbon\Carbon::create($month)->format('F Y') }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            color: #1f2937;
+            line-height: 1.6;
+            background: #ffffff;
+        }
+        
+        .payslip-container {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: #ffffff;
+        }
+        
+        /* Header Section */
+        .header {
+            border-bottom: 4px solid #2563eb;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .company-info {
+            flex: 1;
+        }
+        
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 5px;
+        }
+        
+        .company-tagline {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .payslip-title {
+            text-align: right;
+        }
+        
+        .payslip-title h1 {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+        
+        .payslip-period {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .header-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #4b5563;
+        }
+        
+        /* Employee Information Section */
+        .info-section {
+            margin-bottom: 25px;
+        }
+        
+        .info-grid {
+            display: table;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .info-row {
+            display: table-row;
+        }
+        
+        .info-col {
+            display: table-cell;
+            width: 50%;
+            padding: 15px;
+            vertical-align: top;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .info-col:first-child {
+            border-right: none;
+        }
+        
+        .section-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #374151;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #2563eb;
+        }
+        
+        .info-item {
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #4b5563;
+            display: inline-block;
+            width: 100px;
+        }
+        
+        .info-value {
+            color: #1f2937;
+        }
+        
+        /* Earnings Section */
+        .earnings-section {
+            margin-bottom: 25px;
+        }
+        
+        .section-header {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #2563eb;
+        }
+        
+        .earnings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        .earnings-table th {
+            background: #f3f4f6;
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: bold;
+            color: #374151;
+            text-transform: uppercase;
+            border: 1px solid #d1d5db;
+        }
+        
+        .earnings-table td {
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+        
+        .earnings-table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .earnings-table .item-name {
+            color: #4b5563;
+            font-weight: 500;
+        }
+        
+        .earnings-table .item-amount {
+            text-align: right;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .earnings-table .total-row {
+            background: #eff6ff;
+            font-weight: bold;
+        }
+        
+        .earnings-table .total-row td {
+            border-top: 2px solid #2563eb;
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+        
+        /* Overtime Details */
+        .overtime-section {
+            margin-bottom: 25px;
+        }
+        
+        .overtime-grid {
+            display: table;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .overtime-item {
+            display: table-cell;
+            width: 33.33%;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        
+        .overtime-item:not(:last-child) {
+            border-right: none;
+        }
+        
+        .overtime-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .overtime-hours {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 5px;
+        }
+        
+        .overtime-rate {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        
+        /* Summary Section */
+        .summary-section {
+            background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+            color: #ffffff;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+        
+        .summary-grid {
+            display: table;
+            width: 100%;
+        }
+        
+        .summary-item {
+            display: table-cell;
+            width: 33.33%;
+            text-align: center;
+            padding: 0 15px;
+        }
+        
+        .summary-item:not(:last-child) {
+            border-right: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .summary-label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .summary-amount {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .summary-net {
+            font-size: 32px;
+        }
+        
+        /* Payment Details */
+        .payment-section {
+            margin-bottom: 25px;
+        }
+        
+        .payment-grid {
+            display: table;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .payment-col {
+            display: table-cell;
+            width: 50%;
+            padding: 15px;
+            vertical-align: top;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .payment-col:first-child {
+            border-right: none;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-left: 10px;
+        }
+        
+        .status-paid {
+            background: #10b981;
+            color: #ffffff;
+        }
+        
+        .status-approved {
+            background: #3b82f6;
+            color: #ffffff;
+        }
+        
+        .status-draft {
+            background: #6b7280;
+            color: #ffffff;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            font-size: 10px;
+            color: #6b7280;
+        }
+        
+        .footer p {
+            margin-bottom: 5px;
+        }
+        
+        /* Print Styles */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .payslip-container {
+                padding: 10mm;
+                margin: 0;
+                max-width: 100%;
+                box-shadow: none;
+            }
+            
+            .summary-section {
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Ensure all display types are preserved */
+            .header-top {
+                display: flex !important;
+            }
+            
+            .info-grid,
+            .overtime-grid,
+            .summary-grid,
+            .payment-grid {
+                display: table !important;
+                width: 100% !important;
+            }
+            
+            .info-row,
+            .overtime-item,
+            .summary-item,
+            .payment-col {
+                display: table-cell !important;
+            }
+            
+            table {
+                display: table !important;
+            }
+            
+            tr {
+                display: table-row !important;
+            }
+            
+            td, th {
+                display: table-cell !important;
+            }
+            
+            /* Prevent page breaks in critical sections */
+            .header,
+            .summary-section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="payslip-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-top">
+                <div class="company-info">
+                    <div class="company-name">ELMSP</div>
+                    <div class="company-tagline">Employee Management System</div>
                 </div>
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-gray-700 font-semibold">Fixed Commission</span>
-                    <span class="text-gray-900 font-bold">RM {{ number_format($payroll->fixed_commission, 2) }}</span>
-                </div>
-                    <div class="flex justify-between py-1">
-                        <div class="text-sm text-gray-600">Marketing Bonus</div>
-                        <div class="text-gray-900 font-bold">RM {{ number_format($payroll->marketing_bonus ?? 0, 2) }}</div>
-                    </div>
-                <div class="flex justify-between items-center pt-3 border-t border-blue-200">
-                    <span class="text-gray-700 font-semibold">Base Total</span>
-                    <span class="text-blue-700 font-bold">RM {{ number_format($payroll->basic_salary + $payroll->fixed_commission, 2) }}</span>
+                <div class="payslip-title">
+                    <h1>PAYSLIP</h1>
+                    <div class="payslip-period">{{ \Carbon\Carbon::create($month)->format('F Y') }}</div>
                 </div>
             </div>
-
-            <div class="bg-green-50 p-4 rounded">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-gray-700 font-semibold">Overtime (Regular)</span>
-                    <span class="text-gray-900 font-bold">RM {{ number_format($payroll->fulltime_ot_pay, 2) }}</span>
-                </div>
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-gray-700 font-semibold">Public Holiday Pay</span>
-                    <span class="text-gray-900 font-bold">RM {{ number_format($payroll->public_holiday_pay, 2) }}</span>
-                </div>
-                <div class="flex justify-between items-center pt-3 border-t border-green-200">
-                    <span class="text-gray-700 font-semibold">Allowances Total</span>
-                    <span class="text-green-700 font-bold">RM {{ number_format($payroll->fulltime_ot_pay + $payroll->public_holiday_pay, 2) }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Overtime Details -->
-    <div class="mb-8">
-        <h3 class="text-lg font-bold text-gray-800 mb-4 pb-2 border-b-2 border-purple-500">Overtime Details</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-purple-50 p-4 rounded text-center">
-                <div class="text-sm text-gray-600 mb-1">Fulltime OT Hours</div>
-                <div class="text-2xl font-bold text-purple-700">{{ $payroll->fulltime_ot_hours }}</div>
-                <div class="text-sm text-gray-600 mt-2">@ RM 12.26/hr</div>
-            </div>
-            <div class="bg-orange-50 p-4 rounded text-center">
-                <div class="text-sm text-gray-600 mb-1">Public Holiday OT Hours</div>
-                <div class="text-2xl font-bold text-orange-700">{{ $payroll->public_holiday_ot_hours }}</div>
-                <div class="text-sm text-gray-600 mt-2">@ RM 21.68/hr</div>
-            </div>
-            <div class="bg-indigo-50 p-4 rounded text-center">
-                <div class="text-sm text-gray-600 mb-1">Public Holiday Hours</div>
-                <div class="text-2xl font-bold text-indigo-700">{{ $payroll->public_holiday_hours }}</div>
-                <div class="text-sm text-gray-600 mt-2">@ RM 15.38/hr</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary Section -->
-    <div class="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-lg">
-        <div class="grid grid-cols-3 gap-6 text-center">
-            <div>
-                <div class="text-sm opacity-90 mb-1">Gross Salary</div>
-                <div class="text-2xl font-bold">RM {{ number_format($payroll->gross_salary, 2) }}</div>
-            </div>
-            <div class="border-l border-r border-white border-opacity-30">
-                <div class="text-sm opacity-90 mb-1">Deductions</div>
-                <div class="text-2xl font-bold">RM {{ number_format($payroll->total_deductions, 2) }}</div>
-            </div>
-            <div>
-                <div class="text-sm opacity-90 mb-1">Net Salary</div>
-                <div class="text-3xl font-bold">RM {{ number_format($payroll->net_salary, 2) }}</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payment Details -->
-    <div class="grid grid-cols-2 gap-8 pb-6 border-b mb-6">
-        <div>
-            <h3 class="text-sm font-bold text-gray-600 uppercase mb-3">Payment Status</h3>
-            <div class="space-y-2 text-sm text-gray-700">
+            <div class="header-details">
                 <div>
-                    <span class="font-semibold">Status:</span>
-                    <span class="ml-2 px-3 py-1 rounded-full text-white text-xs font-semibold
-                        @if($payroll->status === 'paid')
-                            bg-green-600
-                        @elseif($payroll->status === 'approved')
-                            bg-blue-600
-                        @else
-                            bg-gray-600
-                        @endif
-                    ">
-                        {{ ucfirst($payroll->status) }}
-                    </span>
+                    <strong>Employee ID:</strong> {{ $user->employee_id ?? 'N/A' }}
                 </div>
-                @if($payroll->payment_date)
-                    <div><span class="font-semibold">Payment Date:</span> {{ $payroll->payment_date->format('d M Y') }}</div>
-                @endif
-                @if($payroll->remarks)
-                    <div><span class="font-semibold">Remarks:</span> {{ $payroll->remarks }}</div>
-                @endif
+                <div>
+                    <strong>Payroll Period:</strong> {{ $month }}
+                </div>
             </div>
         </div>
-        <div>
-            <h3 class="text-sm font-bold text-gray-600 uppercase mb-3">Calculation Period</h3>
-            <div class="space-y-2 text-sm text-gray-700">
-                <div><span class="font-semibold">Year:</span> {{ $payroll->year }}</div>
-                <div><span class="font-semibold">Month:</span> {{ \Carbon\Carbon::createFromFormat('n', $payroll->month)->format('F') }}</div>
-                <div><span class="font-semibold">Generated:</span> {{ $payroll->created_at->format('d M Y') }}</div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Footer -->
-    <div class="pt-6 border-t text-center text-xs text-gray-600">
-        <p>This is an electronically generated payslip. No signature is required.</p>
-        <p class="mt-1">For inquiries, please contact HR Department</p>
+        <!-- Employee Information -->
+        <div class="info-section">
+            <div class="info-grid">
+                <div class="info-row">
+                    <div class="info-col">
+                        <div class="section-title">Employee Information</div>
+                        <div class="info-item">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value">{{ $user->name }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Email:</span>
+                            <span class="info-value">{{ $user->email }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Phone:</span>
+                            <span class="info-value">{{ $user->phone ?? 'N/A' }}</span>
+                        </div>
+                    </div>
+                    <div class="info-col">
+                        <div class="section-title">Employment Details</div>
+                        <div class="info-item">
+                            <span class="info-label">Department:</span>
+                            <span class="info-value">{{ $staff->department ?? 'N/A' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Hire Date:</span>
+                            <span class="info-value">{{ $staff->hire_date ? $staff->hire_date->format('d M Y') : 'N/A' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Role:</span>
+                            <span class="info-value">{{ ucfirst($user->role) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Earnings Section -->
+        <div class="earnings-section">
+            <div class="section-header">Earnings & Allowances</div>
+            <table class="earnings-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60%;">Description</th>
+                        <th style="width: 40%; text-align: right;">Amount (RM)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="item-name">Basic Salary</td>
+                        <td class="item-amount">{{ number_format($payroll->basic_salary, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="item-name">Fixed Commission</td>
+                        <td class="item-amount">{{ number_format($payroll->fixed_commission, 2) }}</td>
+                    </tr>
+                    @if(($payroll->marketing_bonus ?? 0) > 0)
+                    <tr>
+                        <td class="item-name">Marketing Bonus</td>
+                        <td class="item-amount">{{ number_format($payroll->marketing_bonus, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if(($payroll->fulltime_ot_pay ?? 0) > 0)
+                    <tr>
+                        <td class="item-name">Overtime (Regular)</td>
+                        <td class="item-amount">{{ number_format($payroll->fulltime_ot_pay, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if(($payroll->public_holiday_pay ?? 0) > 0)
+                    <tr>
+                        <td class="item-name">Public Holiday Pay</td>
+                        <td class="item-amount">{{ number_format($payroll->public_holiday_pay, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if(($payroll->public_holiday_ot_pay ?? 0) > 0)
+                    <tr>
+                        <td class="item-name">Public Holiday Overtime</td>
+                        <td class="item-amount">{{ number_format($payroll->public_holiday_ot_pay, 2) }}</td>
+                    </tr>
+                    @endif
+                    <tr class="total-row">
+                        <td class="item-name">Gross Salary</td>
+                        <td class="item-amount">{{ number_format($payroll->gross_salary, 2) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Overtime Details (if applicable) -->
+        @if(($payroll->fulltime_ot_hours ?? 0) > 0 || ($payroll->public_holiday_ot_hours ?? 0) > 0 || ($payroll->public_holiday_hours ?? 0) > 0)
+        <div class="overtime-section">
+            <div class="section-header">Overtime Breakdown</div>
+            <div class="overtime-grid">
+                @if(($payroll->fulltime_ot_hours ?? 0) > 0)
+                <div class="overtime-item">
+                    <div class="overtime-label">Fulltime OT Hours</div>
+                    <div class="overtime-hours">{{ number_format($payroll->fulltime_ot_hours, 1) }}</div>
+                    <div class="overtime-rate">@ RM 12.26/hour</div>
+                </div>
+                @endif
+                @if(($payroll->public_holiday_ot_hours ?? 0) > 0)
+                <div class="overtime-item">
+                    <div class="overtime-label">Public Holiday OT Hours</div>
+                    <div class="overtime-hours">{{ number_format($payroll->public_holiday_ot_hours, 1) }}</div>
+                    <div class="overtime-rate">@ RM 21.68/hour</div>
+                </div>
+                @endif
+                @if(($payroll->public_holiday_hours ?? 0) > 0)
+                <div class="overtime-item">
+                    <div class="overtime-label">Public Holiday Hours</div>
+                    <div class="overtime-hours">{{ number_format($payroll->public_holiday_hours, 1) }}</div>
+                    <div class="overtime-rate">@ RM 15.38/hour</div>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">Gross Salary</div>
+                    <div class="summary-amount">RM {{ number_format($payroll->gross_salary, 2) }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Deductions</div>
+                    <div class="summary-amount">RM {{ number_format($payroll->total_deductions, 2) }}</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Net Salary</div>
+                    <div class="summary-amount summary-net">RM {{ number_format($payroll->net_salary, 2) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="payment-section">
+            <div class="payment-grid">
+                <div class="payment-col">
+                    <div class="section-title">Payment Status</div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="status-badge status-{{ $payroll->status }}">
+                            {{ ucfirst($payroll->status) }}
+                        </span>
+                    </div>
+                    @if($payroll->payment_date)
+                    <div class="info-item">
+                        <span class="info-label">Payment Date:</span>
+                        <span class="info-value">{{ $payroll->payment_date->format('d M Y') }}</span>
+                    </div>
+                    @endif
+                    @if($payroll->remarks)
+                    <div class="info-item">
+                        <span class="info-label">Remarks:</span>
+                        <span class="info-value">{{ $payroll->remarks }}</span>
+                    </div>
+                    @endif
+                </div>
+                <div class="payment-col">
+                    <div class="section-title">Calculation Period</div>
+                    <div class="info-item">
+                        <span class="info-label">Year:</span>
+                        <span class="info-value">{{ $payroll->year }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Month:</span>
+                        <span class="info-value">{{ \Carbon\Carbon::createFromFormat('n', $payroll->month)->format('F') }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Generated:</span>
+                        <span class="info-value">{{ $payroll->created_at->format('d M Y, h:i A') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>This is an electronically generated payslip. No signature is required.</strong></p>
+            <p>For inquiries, please contact HR Department</p>
+            <p style="margin-top: 10px; font-size: 9px;">Generated on {{ now()->format('d M Y, h:i A') }}</p>
+        </div>
     </div>
-</div>
+</body>
+</html>

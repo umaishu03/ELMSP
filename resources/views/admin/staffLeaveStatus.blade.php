@@ -6,26 +6,19 @@
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
 
-<!-- Search and Action Buttons Section -->
-<div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-    <!-- Search Bar -->
-    <div class="relative flex-1 max-w-md">
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Staff Leave Status</h1>
+</div>
+<!-- Search Section -->
+<div class="mb-6">
+    <div class="relative max-w-md">
         <input type="text" 
+               id="leaveSearchInput"
                placeholder="Search by name, department, or leave type..." 
                class="w-full pl-4 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm">
         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
             <i class="fas fa-search text-gray-400"></i>
         </div>
-    </div>
-
-    <!-- Filter Buttons -->
-    <div class="flex gap-2">
-        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">
-            <i class="fas fa-filter mr-2"></i>Filter
-        </button>
-        <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm">
-            <i class="fas fa-file-excel mr-2"></i>Export
-        </button>
     </div>
 </div>
 
@@ -64,9 +57,12 @@
             </thead>
 
             <!-- Table Body -->
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody id="leaveTableBody" class="bg-white divide-y divide-gray-200">
                 @forelse($staffLeaves as $leave)
-                <tr class="hover:bg-blue-50 transition-colors">
+                <tr class="leave-row hover:bg-blue-50 transition-colors" 
+                    data-name="{{ strtolower($leave->user->name ?? 'N/A') }}"
+                    data-department="{{ strtolower($leave->user->staff->department ?? 'N/A') }}"
+                    data-leave-type="{{ strtolower(str_replace('_', ' ', $leave->leaveType?->type_name ?? 'N/A')) }}">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="text-sm font-semibold text-gray-900">{{ $leave->user->name ?? 'N/A' }}</div>
@@ -91,7 +87,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         @if($leave->attachment)
-                        <a href="{{ asset('storage/' . $leave->attachment) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                        <a href="{{ route('admin.leave.attachment', $leave->id) }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
                             <i class="fas fa-file-pdf mr-1"></i>View
                         </a>
                         @else
@@ -138,5 +134,79 @@
         {{ $staffLeaves->links() }}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('leaveSearchInput');
+    const tableBody = document.getElementById('leaveTableBody');
+    
+    if (!searchInput || !tableBody) return;
+
+    const rows = tableBody.querySelectorAll('.leave-row');
+    const emptyStateRow = tableBody.querySelector('tr:not(.leave-row)');
+    
+    // Create a custom empty state for search results if it doesn't exist
+    let searchEmptyState = null;
+    if (rows.length > 0) {
+        searchEmptyState = document.createElement('tr');
+        searchEmptyState.id = 'searchEmptyState';
+        searchEmptyState.style.display = 'none';
+        searchEmptyState.innerHTML = `
+            <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center justify-center">
+                    <i class="fas fa-search text-4xl mb-3 text-gray-300"></i>
+                    <p class="text-lg font-medium">No leave records found matching your search</p>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(searchEmptyState);
+    }
+
+    function filterTable() {
+        const searchTerm = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name') || '';
+            const department = row.getAttribute('data-department') || '';
+            const leaveType = row.getAttribute('data-leave-type') || '';
+            
+            const matches = searchTerm === '' || 
+                name.includes(searchTerm) || 
+                department.includes(searchTerm) || 
+                leaveType.includes(searchTerm);
+
+            if (matches) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Show/hide empty state for search results
+        if (searchEmptyState) {
+            if (visibleCount === 0 && searchTerm !== '') {
+                searchEmptyState.style.display = '';
+            } else {
+                searchEmptyState.style.display = 'none';
+            }
+        }
+
+        // Hide original empty state when searching
+        if (emptyStateRow) {
+            if (searchTerm !== '') {
+                emptyStateRow.style.display = 'none';
+            } else {
+                emptyStateRow.style.display = '';
+            }
+        }
+    }
+
+    // Add event listener for search input
+    searchInput.addEventListener('input', filterTable);
+    searchInput.addEventListener('keyup', filterTable);
+});
+</script>
 
 @endsection

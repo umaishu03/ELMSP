@@ -9,35 +9,35 @@
 <div class="max-w-7xl mx-auto mt-8 mb-12 space-y-6">
     <!-- ========== OVERTIME STATUS SECTION ========== -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 px-8 py-6">
-            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+        <div class="bg-gradient-to-r from-indigo-600 to-indigo-800 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+            <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
                 <i class="fas fa-list-check"></i>
-                Overtime Application Status
+                <span class="break-words">Overtime Application Status</span>
             </h1>
-            <p class="text-indigo-100 mt-2">Track your overtime applications and approval status</p>
+            <p class="text-indigo-100 mt-2 text-sm sm:text-base">Track your overtime applications and approval status</p>
         </div>
 
         <!-- Filter Section -->
-        <div class="px-8 py-4 bg-gray-50 border-b border-gray-100">
-            <div class="flex flex-col md:flex-row gap-4 items-end">
-                <div class="flex-1">
+        <div class="px-4 sm:px-6 md:px-8 py-4 bg-gray-50 border-b border-gray-100">
+            <div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+                <div class="flex-1 w-full sm:w-auto">
                     <label class="block text-xs font-medium text-gray-600 mb-2">Filter by Status</label>
-                    <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+                    <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
                         <option value="all">All Status</option>
                         <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
                         <option value="rejected">Rejected</option>
                     </select>
                 </div>
-                <div class="flex-1">
+                <div class="flex-1 w-full sm:w-auto">
                     <label class="block text-xs font-medium text-gray-600 mb-2">Filter by Type</label>
-                    <select id="typeFilter" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
+                    <select id="typeFilter" class="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white">
                         <option value="all">All Types</option>
                         <option value="fulltime">Fulltime</option>
                         <option value="public_holiday">Public Holiday</option>
                     </select>
                 </div>
-                <button type="button" id="refreshStatus" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all flex items-center gap-2">
+                <button type="button" id="refreshStatus" class="w-full sm:w-auto px-4 sm:px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base">
                     <i class="fas fa-sync-alt"></i>
                     <span>Refresh</span>
                 </button>
@@ -45,8 +45,8 @@
         </div>
 
         <!-- Status Cards Summary -->
-        <div class="px-8 py-6 bg-gradient-to-br from-gray-50 to-gray-100">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="px-4 sm:px-6 md:px-8 py-4 sm:py-6 bg-gradient-to-br from-gray-50 to-gray-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div class="bg-white rounded-xl p-5 border-l-4 border-yellow-500 shadow-sm">
                     <div class="flex items-center justify-between">
                         <div>
@@ -86,7 +86,7 @@
         </div>
 
         <!-- Applications Table -->
-        <div class="px-8 py-6">
+        <div class="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
             <div class="bg-white rounded-lg overflow-hidden border border-gray-200">
                 <div class="overflow-x-auto">
                     <table class="w-full">

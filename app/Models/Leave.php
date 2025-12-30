@@ -39,7 +39,7 @@ class Leave extends Model
         'medical' => 14,
         'emergency' => 7,
         'replacement' => null, // calculated from OT hours
-        'unpaid' => null,       // unlimited
+        'unpaid' => 10,        // 10 days limit
         'marriage' => 6,
     ];
 
@@ -178,13 +178,6 @@ class Leave extends Model
      */
     public function autoApproveOrReject()
     {
-        // For replacement leaves: always require admin approval initially
-        $typeName = $this->leaveType?->type_name ?? null;
-        if ($typeName === 'replacement') {
-            $this->status = 'pending';
-            return;
-        }
-
         // Check availability (leave balance)
         if (!$this->checkAvailability()) {
             $this->status = 'rejected';
@@ -199,7 +192,7 @@ class Leave extends Model
             return;
         }
 
-        // Auto-approve if all checks pass
+        // Auto-approve if all checks pass (including replacement leave)
         $this->status = 'approved';
         $this->auto_approved = true;
         $this->approved_at = now();
@@ -211,12 +204,18 @@ class Leave extends Model
     protected static function booted()
     {
         static::creating(function ($leave) {
-            // Auto-approve/reject based on constraints
-            $leave->autoApproveOrReject();
+            // Set initial status to pending
+            if (!$leave->status) {
+                $leave->status = 'pending';
+            }
         });
 
-        // After creation: if already approved, link shifts
+        // After creation: auto-approve or reject based on constraints
         static::created(function ($leave) {
+            // Auto-approve or reject based on constraints
+            $leave->autoApproveOrReject();
+            $leave->save();
+            
             if ($leave->status === 'approved') {
                 // apply balance changes and link shifts for approved leave
                 $leave->applyToBalance();

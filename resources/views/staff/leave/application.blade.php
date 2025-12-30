@@ -140,7 +140,7 @@
                         <div id="unpaidNote" class="hidden mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                             <div class="flex items-start gap-2 text-white">
                                 <i class="fas fa-info-circle mt-0.5"></i>
-                                <p class="text-sm">Unpaid leave has no limit. You can apply for any duration.</p>
+                                <p class="text-sm">Unpaid leave has a maximum limit of 10 days per year.</p>
                             </div>
                         </div>
                     </div>
@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         unpaid: {
             name: 'UNPAID LEAVE',
-            unlimited: true
+            unlimited: false
         }
     };
 
