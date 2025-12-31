@@ -55,15 +55,26 @@
                             class="block w-full pl-10 pr-10 py-3 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg bg-white transition duration-150 ease-in-out">
                         <option value="">-- Select Month --</option>
                         @php
+                            $months = [];
+                            $seenMonths = [];
                             for ($i = 0; $i < 12; $i++) {
                                 $date = now()->subMonths($i);
                                 $value = $date->format('Y-m');
                                 $label = $date->format('F Y');
-                        @endphp
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @php
+                                
+                                // Only add if we haven't seen this month value before
+                                if (!in_array($value, $seenMonths)) {
+                                    $months[] = [
+                                        'value' => $value,
+                                        'label' => $label
+                                    ];
+                                    $seenMonths[] = $value;
+                                }
                             }
                         @endphp
+                        @foreach($months as $month)
+                            <option value="{{ $month['value'] }}">{{ $month['label'] }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>

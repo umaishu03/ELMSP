@@ -28,40 +28,37 @@ class PayrollController extends Controller
                 $role = $user->role ?? '';
                 $name = $user->name ?? '';
                 $hireDate = $staff->hire_date;
+                
+                // Ensure hire_date is a Carbon instance
+                if ($hireDate && !($hireDate instanceof \Carbon\Carbon)) {
+                    $hireDate = \Carbon\Carbon::parse($hireDate);
+                }
 
                 // Calculate working days based on shifts assigned in timetable
                 $monthStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
                 $monthEnd = \Carbon\Carbon::create($year, $month, 1)->endOfMonth();
                 
-                // Determine the start date for calculation (hire date or month start, whichever is later)
-                $calcStartDate = $hireDate && $hireDate->gt($monthStart) ? $hireDate->copy() : $monthStart->copy();
+                // Determine the start date for counting shifts (hire date or month start, whichever is later)
+                // For mid-month joins, only count shifts from hire date onwards
+                if ($hireDate && $hireDate instanceof \Carbon\Carbon && $hireDate->gt($monthStart)) {
+                    $calcStartDate = $hireDate->copy()->startOfDay();
+                } else {
+                    $calcStartDate = $monthStart->copy()->startOfDay();
+                }
                 
                 // Get all shifts for this staff in the selected month
                 $shifts = Shift::where('staff_id', $staff->id)
                     ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
                     ->get();
                 
-                // Calculate total expected working days in the month
-                // Staff work 6 days per week (1 rest day per week)
-                $totalWorkingDaysInMonth = 0;
-                $currentDate = $monthStart->copy();
-                $daysFromStart = 0;
+                // Industry Standard: Total working days is ALWAYS 27 (full month), regardless of hire date
+                // Calculate full month working days: Dec has 31 days, minus 4 rest days (1 per week) = 27 days
+                $totalDaysInMonth = $monthEnd->day; // Days in the month (28-31)
+                $weeksInMonth = $totalDaysInMonth / 7;
+                $restDaysInMonth = floor($weeksInMonth); // 1 rest day per week
+                $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth; // Always 27 for December
                 
-                while ($currentDate->lte($monthEnd)) {
-                    // Only count days from hire date onwards (if hired mid-month)
-                    if ($currentDate->gte($calcStartDate->startOfDay())) {
-                        $daysFromStart++;
-                    }
-                    $currentDate->addDay();
-                }
-                
-                // Calculate expected working days: total days - rest days (1 per week)
-                // Weeks = days / 7, rest days = weeks × 1
-                $weeks = $daysFromStart / 7;
-                $restDays = floor($weeks); // 1 rest day per week
-                $totalWorkingDaysInMonth = $daysFromStart - $restDays;
-                
-                // Count actual shifts assigned (exclude rest days and leave days)
+                // Count actual shifts worked (only from hire date onwards for mid-month joins)
                 $workingDays = 0;
                 
                 foreach ($shifts as $shift) {
@@ -86,6 +83,8 @@ class PayrollController extends Controller
                 }
                 
                 // Calculate pro-rated basic salary
+                // Industry Standard Formula: (Full Basic Salary ÷ 27) × Shifts Worked
+                // This ensures all staff are paid proportionally to the full month, regardless of hire date
                 $basic_salary = $totalWorkingDaysInMonth > 0 
                     ? ($fullBasicSalary / $totalWorkingDaysInMonth) * $workingDays 
                     : 0;
@@ -158,8 +157,8 @@ class PayrollController extends Controller
                     'ph_ot_hours' => $ph_ot_hours,
                     'hire_date' => $hireDate,
                     'working_days' => $workingDays,
-                    'total_working_days' => $totalWorkingDaysInMonth,
-                    'is_full_month' => $workingDays == $totalWorkingDaysInMonth,
+                    'total_working_days' => $totalWorkingDaysInMonth, // Always 27 (full month)
+                    'is_full_month' => $workingDays == $totalWorkingDaysInMonth && $calcStartDate->eq($monthStart),
                     'user_id' => $user->id,
                     'payroll_status' => $payrollStatus,
                 ];
@@ -204,32 +203,32 @@ class PayrollController extends Controller
         // Calculate working days based on shifts
         $monthStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
         $monthEnd = \Carbon\Carbon::create($year, $month, 1)->endOfMonth();
-        $calcStartDate = $staff->hire_date && $staff->hire_date->gt($monthStart) 
-            ? $staff->hire_date->copy() 
-            : $monthStart->copy();
-
-        // Calculate total expected working days in the month (6 days per week)
-        $totalWorkingDaysInMonth = 0;
-        $currentDate = $monthStart->copy();
-        $daysFromStart = 0;
-        
-        while ($currentDate->lte($monthEnd)) {
-            if ($currentDate->gte($calcStartDate->startOfDay())) {
-                $daysFromStart++;
-            }
-            $currentDate->addDay();
+        // Ensure hire_date is a Carbon instance
+        $hireDate = $staff->hire_date;
+        if ($hireDate && !($hireDate instanceof \Carbon\Carbon)) {
+            $hireDate = \Carbon\Carbon::parse($hireDate);
         }
         
-        $weeks = $daysFromStart / 7;
-        $restDays = floor($weeks); // 1 rest day per week
-        $totalWorkingDaysInMonth = $daysFromStart - $restDays;
+        // Determine the start date for calculation (hire date or month start, whichever is later)
+        if ($hireDate && $hireDate instanceof \Carbon\Carbon && $hireDate->gt($monthStart)) {
+            $calcStartDate = $hireDate->copy()->startOfDay();
+        } else {
+            $calcStartDate = $monthStart->copy()->startOfDay();
+        }
+
+        // Industry Standard: Total working days is ALWAYS based on full month, regardless of hire date
+        // Calculate full month working days: month days minus rest days (1 per week)
+        $totalDaysInMonth = $monthEnd->day; // Days in the month (28-31)
+        $weeksInMonth = $totalDaysInMonth / 7;
+        $restDaysInMonth = floor($weeksInMonth); // 1 rest day per week
+        $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth; // Always 27 for December
 
         // Get all shifts for this staff in the selected month
         $shifts = Shift::where('staff_id', $staff->id)
             ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
             ->get();
 
-        // Count actual shifts assigned
+        // Count actual shifts worked (only from hire date onwards for mid-month joins)
         $workingDays = 0;
         foreach ($shifts as $shift) {
             $shiftDate = $shift->date instanceof \Carbon\Carbon 
@@ -246,6 +245,9 @@ class PayrollController extends Controller
             }
         }
 
+        // Calculate pro-rated basic salary
+        // Industry Standard Formula: (Full Basic Salary ÷ 27) × Shifts Worked
+        // This ensures all staff are paid proportionally to the full month, regardless of hire date
         $basic_salary = $totalWorkingDaysInMonth > 0 
             ? ($fullBasicSalary / $totalWorkingDaysInMonth) * $workingDays 
             : 0;

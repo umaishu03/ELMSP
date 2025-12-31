@@ -393,9 +393,11 @@
                             <ul class="space-y-1 text-sm text-gray-700">
                                 <li>• Working days are based on <strong>shifts assigned in the timetable</strong></li>
                                 <li>• Only counts shifts with working hours (excludes rest days and leave days)</li>
-                                <li>• <strong>Full month:</strong> Staff receives full basic salary if worked all assigned shifts</li>
-                                <li>• <strong>Mid-month join:</strong> Salary pro-rated based on shifts from hire date onwards</li>
-                                <li>• Formula: (Basic Salary ÷ Total Assigned Shifts) × Shifts Worked</li>
+                                <li>• <strong>Industry Standard:</strong> Salary is always calculated based on <strong>full month (27 days)</strong>, regardless of hire date</li>
+                                <li>• <strong>Full month staff:</strong> Receives full basic salary if worked all 27 shifts</li>
+                                <li>• <strong>Mid-month join:</strong> Only counts shifts from hire date onwards, but salary is still pro-rated against full month (27 days)</li>
+                                <li>• <strong>Formula:</strong> (Full Basic Salary ÷ 27) × Actual Shifts Worked</li>
+                                <li>• Example: Staff hired Dec 28, worked 2 shifts → (RM 1,500 ÷ 27) × 2 = RM 111.11</li>
                             </ul>
                         </div>
                         <div class="bg-white rounded-lg p-4 shadow-sm">

@@ -191,11 +191,21 @@
             <button id="assignEditBtn" class="w-full mb-2 bg-green-600 text-white py-2 rounded">✎ EDIT SHIFT</button>
             <input type="hidden" id="assignEditShiftId" value="">
             <div id="assignStatus" class="mt-2 text-sm text-gray-700"></div>
-            <div id="toast" class="fixed top-6 right-6 bg-green-600 text-white px-4 py-2 rounded shadow hidden"></div>
+            <div id="toast" class="fixed top-6 right-6 z-50 px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 ease-in-out hidden">
+                <div class="flex items-center gap-3">
+                    <div id="toastIcon" class="text-2xl"></div>
+                    <div>
+                        <div id="toastMessage" class="font-semibold text-white"></div>
+                        <div id="toastSubMessage" class="text-sm text-white opacity-90 mt-1"></div>
+                    </div>
+                </div>
+            </div>
             <style>
                 .cell-loading { position:relative; }
                 .cell-loading:after { content:''; position:absolute; right:6px; top:6px; width:10px; height:10px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; animation:spin 0.8s linear infinite; }
                 @keyframes spin { to { transform: rotate(360deg); } }
+                #toast.show { transform: translateX(0) scale(1); opacity: 1; }
+                #toast.hidden { transform: translateX(400px) scale(0.9); opacity: 0; }
             </style>
         </div>
     </div>
@@ -324,6 +334,58 @@ document.addEventListener('DOMContentLoaded', function() {
         const qs = '?week_start=' + `${y}-${m}-${d}`;
         // Reload the page so server renders the timetable for the selected week
         window.location.href = window.location.pathname + qs;
+    }
+
+    // --- Toast Notification System ---
+    function showToast(message, subMessage = '', type = 'success') {
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const toastSubMessage = document.getElementById('toastSubMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        
+        if (!toast || !toastMessage) return;
+        
+        // Set message
+        toastMessage.textContent = message;
+        if (toastSubMessage) {
+            toastSubMessage.textContent = subMessage;
+            toastSubMessage.style.display = subMessage ? 'block' : 'none';
+        }
+        
+        // Set icon and color based on type
+        if (toastIcon) {
+            if (type === 'success') {
+                toastIcon.textContent = '✓';
+                toast.classList.remove('bg-red-600', 'bg-yellow-600', 'bg-blue-600');
+                toast.classList.add('bg-green-600');
+            } else if (type === 'error') {
+                toastIcon.textContent = '✕';
+                toast.classList.remove('bg-green-600', 'bg-yellow-600', 'bg-blue-600');
+                toast.classList.add('bg-red-600');
+            } else if (type === 'warning') {
+                toastIcon.textContent = '⚠';
+                toast.classList.remove('bg-green-600', 'bg-red-600', 'bg-blue-600');
+                toast.classList.add('bg-yellow-600');
+            } else {
+                toastIcon.textContent = 'ℹ';
+                toast.classList.remove('bg-green-600', 'bg-red-600', 'bg-yellow-600');
+                toast.classList.add('bg-blue-600');
+            }
+        }
+        
+        // Show toast with animation
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 300);
+        }, 3000);
     }
 
     // --- Event Listeners ---
@@ -796,8 +858,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const statusEl = document.getElementById('assignStatus');
                     if (statusEl) statusEl.innerHTML = '';
 
-                    const toast = document.getElementById('toast');
-                    if (toast) { toast.textContent = 'Assigning shifts...'; toast.classList.remove('hidden'); }
+                    showToast('Assigning shifts...', 'Please wait while we update the timetable', 'info');
 
                     // Send requests sequentially so we can mark each cell loading and update progressively
                     const results = [];
@@ -888,17 +949,33 @@ document.addEventListener('DOMContentLoaded', function() {
                             const status = f.json && f.json.message ? f.json.message : (f.ok === false ? 'request failed' : 'unknown error');
                             return `User ${uid} on ${dt}: ${status}`;
                         });
-                        alert(`Assigned ${successItems.length} shifts. ${failures.length} failed:\n` + msgs.join('\n'));
-                        if (toast) { toast.textContent = 'Partial'; setTimeout(()=>toast.classList.add('hidden'), 2000); }
+                        showToast(
+                            `Partially Successful: ${successItems.length} shifts assigned`,
+                            `${failures.length} shift(s) failed. Timetable updated.`,
+                            'warning'
+                        );
+                        // Still show alert for detailed error info
+                        setTimeout(() => {
+                            alert(`Assigned ${successItems.length} shifts. ${failures.length} failed:\n` + msgs.join('\n'));
+                        }, 500);
                     } else {
-                        alert(`Assigned ${successItems.length} shifts successfully.`);
-                        if (toast) { toast.textContent = 'Done'; setTimeout(()=>toast.classList.add('hidden'), 1200); }
+                        showToast(
+                            'Shifts Assigned Successfully!',
+                            `${successItems.length} shift(s) assigned. Timetable has been updated.`,
+                            'success'
+                        );
                     }
 
                 } catch (err) {
                     console.error(err);
-                    alert('Error assigning shifts. See console for details.');
-                    const toast = document.getElementById('toast'); if (toast) { toast.textContent = 'Error'; setTimeout(()=>toast.classList.add('hidden'), 2000); }
+                    showToast(
+                        'Error Assigning Shifts',
+                        'An error occurred. Please check the console for details.',
+                        'error'
+                    );
+                    setTimeout(() => {
+                        alert('Error assigning shifts. See console for details.');
+                    }, 500);
                 } finally {
                     assignShiftsBtnAjax.disabled = false;
                 }
@@ -1138,6 +1215,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             try {
                 assignEditBtn.disabled = true;
+                
+                // Store original cell info to check if date/user changed
+                const originalCell = document.querySelector(`td[data-shift-id="${shiftId}"]`);
+                const originalDate = originalCell ? originalCell.getAttribute('data-date') : dateStr;
+                const originalUserId = originalCell ? originalCell.getAttribute('data-user-id') : selectedUserIds[0];
+                
                 const res = await fetch(`/admin/shifts/${shiftId}`, {
                     method: 'PUT',
                     credentials: 'same-origin',
@@ -1151,42 +1234,112 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const json = await res.json().catch(()=>({}));
                 if (!res.ok || !json.success) {
-                    alert(json.message || 'Failed to update shift');
+                    showToast(
+                        'Error Updating Shift',
+                        json.message || 'Failed to update shift',
+                        'error'
+                    );
                     console.error(json);
+                    assignEditBtn.disabled = false;
                     return;
                 }
 
                 const shift = json.shift || json;
-                // update the corresponding table cell
-                const selector = `td[data-user-id="${shift.user_id}"][data-date="${shift.date}"]`;
-                const cell = document.querySelector(selector);
+                
+                // Use the same pattern as assign shift - try server date first, then fallback to payload date
+                const dateToUse = shift.date || dateStr;
+                const userIdToUse = shift.user_id || selectedUserIds[0];
+                
+                // If date or user changed, clear the old cell
+                if (originalCell && (dateToUse !== originalDate || String(userIdToUse) !== String(originalUserId))) {
+                    originalCell.classList.remove('bg-green-100', 'bg-yellow-100', 'bg-red-100');
+                    originalCell.classList.add('bg-gray-50');
+                    originalCell.innerHTML = '<span class="text-gray-400 italic">Add Shift</span>';
+                    originalCell.removeAttribute('data-shift-id');
+                    originalCell.setAttribute('data-start_time', '');
+                    originalCell.setAttribute('data-end_time', '');
+                    originalCell.setAttribute('data-break_minutes', '');
+                    originalCell.setAttribute('data-rest_day', '0');
+                }
+                
+                // Find the cell using the same pattern as assign shift
+                const selector = `td[data-user-id="${userIdToUse}"][data-date="${dateToUse}"]`;
+                let cell = document.querySelector(selector);
+                
+                // If not found, try with the original date (fallback like assign shift does)
+                if (!cell && dateToUse !== dateStr) {
+                    const fallbackSel = `td[data-user-id="${userIdToUse}"][data-date="${dateStr}"]`;
+                    cell = document.querySelector(fallbackSel);
+                }
+                
+                // If still not found, try by shift-id
+                if (!cell && shift.id) {
+                    cell = document.querySelector(`td[data-shift-id="${shift.id}"]`);
+                }
+                
+                // If still not found, try by original shift-id
+                if (!cell && shiftId) {
+                    cell = document.querySelector(`td[data-shift-id="${shiftId}"]`);
+                }
+                
                 if (cell) {
-                    // clear old highlight classes
-                    try { cell.classList.remove('bg-gray-50','bg-green-100','bg-yellow-100'); } catch(e) {}
-                    const rest_day = shift.rest_day || false;
+                    const start_time = shift.start_time || '';
+                    const end_time = shift.end_time || '';
+                    const break_minutes = (shift.break_minutes !== undefined) ? shift.break_minutes : 0;
+                    const rest_day = (shift.rest_day !== undefined) ? shift.rest_day : false;
+                    
+                    // Normalize existing classes then add appropriate highlight (same as assign shift)
+                    try { 
+                        cell.classList.remove('bg-gray-50', 'bg-green-100', 'bg-yellow-100', 'bg-red-100'); 
+                    } catch(e) { /* ignore */ }
+                    
                     if (rest_day) {
                         cell.classList.add('bg-yellow-100');
                         cell.innerHTML = `<span class="font-semibold text-red-600">REST DAY</span>`;
                     } else {
                         cell.classList.add('bg-green-100');
-                        cell.innerHTML = `${shift.start_time} - ${shift.end_time}<br><span class="text-xs text-gray-500">Break: ${shift.break_minutes || 0} min</span>`;
+                        cell.innerHTML = `${start_time} - ${end_time}<br><span class="text-xs text-gray-500">Break: ${break_minutes || 0} min</span>`;
                     }
+                    
+                    // Set data attributes (same pattern as assign shift)
                     try {
-                        cell.setAttribute('data-shift-id', shift.id || '');
-                        cell.setAttribute('data-start_time', shift.start_time || '');
-                        cell.setAttribute('data-end_time', shift.end_time || '');
-                        cell.setAttribute('data-break_minutes', shift.break_minutes || '');
-                        // department may not be returned by server; derive from users lookup
-                        const userLookup2 = users.find(u => String(u.id) === String(shift.user_id || shift.user_id));
-                        cell.setAttribute('data-department', (userLookup2 && userLookup2.department) ? userLookup2.department : (shift.department || ''));
+                        if (shift.id) cell.setAttribute('data-shift-id', shift.id);
+                        if (shift.date) cell.setAttribute('data-date', shift.date);
+                        cell.setAttribute('data-start_time', start_time);
+                        cell.setAttribute('data-end_time', end_time);
+                        cell.setAttribute('data-break_minutes', break_minutes || '');
+                        // derive department from users lookup (staff list) if available
+                        const userLookup2 = users.find(u => String(u.id) === String(userIdToUse));
+                        const deptVal = (userLookup2 && userLookup2.department) ? userLookup2.department : (shift.department || '');
+                        cell.setAttribute('data-department', deptVal);
                         cell.setAttribute('data-rest_day', rest_day ? '1' : '0');
-                    } catch (e) { console.debug('failed to set cell attrs', e); }
+                    } catch (e) { 
+                        console.debug('failed to set cell attrs', e); 
+                    }
+                } else {
+                    console.warn('Cell not found for shift update. Selector:', selector, 'Shift data:', shift);
+                    showToast(
+                        'Shift Updated',
+                        'Please refresh to see changes',
+                        'warning'
+                    );
                 }
 
-                alert('Shift updated successfully');
+                showToast(
+                    'Shift Updated Successfully!',
+                    'The shift has been updated and the timetable refreshed.',
+                    'success'
+                );
             } catch (err) {
                 console.error(err);
-                alert('Error updating shift');
+                showToast(
+                    'Error Updating Shift',
+                    'An error occurred while updating the shift.',
+                    'error'
+                );
+                setTimeout(() => {
+                    alert('Error updating shift');
+                }, 500);
             } finally {
                 assignEditBtn.disabled = false;
             }
@@ -1208,31 +1361,43 @@ document.addEventListener('DOMContentLoaded', function() {
             const end_time = document.getElementById('editEndTime').value;
             const break_minutes = document.getElementById('editBreakMinutes').value || 0;
 
-            if (!userId || !date || !start_time || !end_time) {
-                alert('Please fill user, date, start and end time.');
+            // Get rest_day status from assign panel checkbox (since modal doesn't have one)
+            const assignRestDayCheckbox = document.getElementById('assignRestDay');
+            const isRestDay = assignRestDayCheckbox && assignRestDayCheckbox.checked;
+
+            if (!userId || !date) {
+                alert('Please fill user and date.');
                 return;
             }
 
-            // Validate time ranges (6:00 AM - 11:00 PM)
-            const startValidation = validateTimeRange(start_time);
-            if (!startValidation.valid) {
-                alert(startValidation.message);
+            if (!isRestDay && (!start_time || !end_time)) {
+                alert('Please fill start and end time (or check Rest Day).');
                 return;
             }
-            
-            const endValidation = validateTimeRange(end_time);
-            if (!endValidation.valid) {
-                alert(endValidation.message);
-                return;
+
+            // Validate time ranges (6:00 AM - 11:00 PM) only if not rest day
+            if (!isRestDay) {
+                const startValidation = validateTimeRange(start_time);
+                if (!startValidation.valid) {
+                    alert(startValidation.message);
+                    return;
+                }
+                
+                const endValidation = validateTimeRange(end_time);
+                if (!endValidation.valid) {
+                    alert(endValidation.message);
+                    return;
+                }
             }
 
             const payload = {
                 user_id: userId,
                 department: document.getElementById('editDepartment') ? document.getElementById('editDepartment').value : (document.getElementById('assignDepartment') ? document.getElementById('assignDepartment').value : 'General'),
                 date: date,
-                start_time: start_time,
-                end_time: end_time,
-                break_minutes: parseInt(break_minutes) || 0,
+                start_time: isRestDay ? '' : start_time,
+                end_time: isRestDay ? '' : end_time,
+                break_minutes: isRestDay ? 0 : (parseInt(break_minutes) || 0),
+                rest_day: isRestDay,
             };
 
             try {
@@ -1241,6 +1406,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (shiftId) { url = `/admin/shifts/${shiftId}`; method = 'PUT'; }
 
                 editSaveBtn.disabled = true;
+                
+                // Store original date to check if it changed
+                const originalDate = date;
+                const originalUserId = userId;
+                
                 const res = await fetch(url, {
                     method: method,
                     credentials: 'same-origin',
@@ -1255,37 +1425,118 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const json = await res.json().catch(() => ({}));
                 if (!res.ok || !json.success) {
-                    alert(json.message || 'Failed to save shift');
+                    showToast(
+                        'Error Saving Shift',
+                        json.message || 'Failed to save shift',
+                        'error'
+                    );
                     console.error(json);
+                    editSaveBtn.disabled = false;
                     return;
                 }
 
                 const shift = json.shift || (json.shifts && json.shifts[0]) || json;
-                // update table cell
-                const selector = `td[data-user-id="${shift.user_id}"][data-date="${shift.date}"]`;
-                const cell = document.querySelector(selector);
+                
+                // Use the same pattern as assign shift - try server date first, then fallback to payload date
+                const dateToUse = shift.date || date;
+                const userIdToUse = shift.user_id || userId;
+                
+                // If date or user changed, clear the old cell (only if we have shiftId)
+                if (shiftId && (dateToUse !== originalDate || String(userIdToUse) !== String(originalUserId))) {
+                    const oldSelector = `td[data-user-id="${originalUserId}"][data-date="${originalDate}"]`;
+                    const oldCell = document.querySelector(oldSelector);
+                    if (oldCell) {
+                        oldCell.classList.remove('bg-green-100', 'bg-yellow-100', 'bg-red-100');
+                        oldCell.classList.add('bg-gray-50');
+                        oldCell.innerHTML = '<span class="text-gray-400 italic">Add Shift</span>';
+                        oldCell.removeAttribute('data-shift-id');
+                        oldCell.setAttribute('data-start_time', '');
+                        oldCell.setAttribute('data-end_time', '');
+                        oldCell.setAttribute('data-break_minutes', '');
+                        oldCell.setAttribute('data-rest_day', '0');
+                    }
+                }
+                
+                // Find the cell using the same pattern as assign shift
+                const selector = `td[data-user-id="${userIdToUse}"][data-date="${dateToUse}"]`;
+                let cell = document.querySelector(selector);
+                
+                // If not found, try with the original date (fallback like assign shift does)
+                if (!cell && dateToUse !== date) {
+                    const fallbackSel = `td[data-user-id="${userIdToUse}"][data-date="${date}"]`;
+                    cell = document.querySelector(fallbackSel);
+                }
+                
+                // If still not found, try by shift-id
+                if (!cell && shift.id) {
+                    cell = document.querySelector(`td[data-shift-id="${shift.id}"]`);
+                }
+                
+                // If still not found, try by original shift-id
+                if (!cell && shiftId) {
+                    cell = document.querySelector(`td[data-shift-id="${shiftId}"]`);
+                }
+                
                 if (cell) {
-                    cell.classList.remove('bg-gray-50');
-                    cell.classList.add('bg-green-100');
-                    cell.innerHTML = `${shift.start_time} - ${shift.end_time}<br><span class="text-xs text-gray-500">Break: ${shift.break_minutes || 0} min</span>`;
-                    // ensure data attributes reflect new values
+                    const start_time = shift.start_time || '';
+                    const end_time = shift.end_time || '';
+                    const break_minutes = (shift.break_minutes !== undefined) ? shift.break_minutes : 0;
+                    const rest_day = (shift.rest_day !== undefined) ? shift.rest_day : false;
+                    
+                    // Normalize existing classes then add appropriate highlight (same as assign shift)
+                    try { 
+                        cell.classList.remove('bg-gray-50', 'bg-green-100', 'bg-yellow-100', 'bg-red-100'); 
+                    } catch(e) { /* ignore */ }
+                    
+                    if (rest_day) {
+                        cell.classList.add('bg-yellow-100');
+                        cell.innerHTML = `<span class="font-semibold text-red-600">REST DAY</span>`;
+                    } else {
+                        cell.classList.add('bg-green-100');
+                        cell.innerHTML = `${start_time} - ${end_time}<br><span class="text-xs text-gray-500">Break: ${break_minutes || 0} min</span>`;
+                    }
+                    
+                    // Set data attributes (same pattern as assign shift)
                     try {
-                        cell.setAttribute('data-shift-id', shift.id || '');
-                        cell.setAttribute('data-start_time', shift.start_time || '');
-                        cell.setAttribute('data-end_time', shift.end_time || '');
-                        cell.setAttribute('data-break_minutes', shift.break_minutes || '');
-                        const userLookup3 = users.find(u => String(u.id) === String(shift.user_id || shift.user_id));
-                        cell.setAttribute('data-department', (userLookup3 && userLookup3.department) ? userLookup3.department : (shift.department || ''));
+                        if (shift.id) cell.setAttribute('data-shift-id', shift.id);
+                        if (shift.date) cell.setAttribute('data-date', shift.date);
+                        cell.setAttribute('data-start_time', start_time);
+                        cell.setAttribute('data-end_time', end_time);
+                        cell.setAttribute('data-break_minutes', break_minutes || '');
+                        // derive department from users lookup (staff list) if available
+                        const userLookup3 = users.find(u => String(u.id) === String(userIdToUse));
+                        const deptVal = (userLookup3 && userLookup3.department) ? userLookup3.department : (shift.department || '');
+                        cell.setAttribute('data-department', deptVal);
+                        cell.setAttribute('data-rest_day', rest_day ? '1' : '0');
                     } catch (e) {
                         console.debug('failed to set data attrs', e);
                     }
+                } else {
+                    console.warn('Cell not found for shift update. Selector:', selector, 'Shift data:', shift);
+                    showToast(
+                        'Shift Updated',
+                        'Please refresh to see changes',
+                        'warning'
+                    );
                 }
 
                 // close modal
                 document.getElementById('editShiftModal').classList.add('hidden');
+                showToast(
+                    'Shift Saved Successfully!',
+                    'The shift has been saved and the timetable updated.',
+                    'success'
+                );
             } catch (err) {
                 console.error(err);
-                alert('Error saving shift');
+                showToast(
+                    'Error Saving Shift',
+                    'An error occurred while saving the shift.',
+                    'error'
+                );
+                setTimeout(() => {
+                    alert('Error saving shift');
+                }, 500);
             } finally {
                 editSaveBtn.disabled = false;
             }
@@ -1329,9 +1580,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 document.getElementById('editShiftModal').classList.add('hidden');
+                showToast(
+                    'Shift Deleted Successfully!',
+                    'The shift has been removed and the timetable updated.',
+                    'success'
+                );
             } catch (err) {
                 console.error(err);
-                alert('Error deleting shift');
+                showToast(
+                    'Error Deleting Shift',
+                    'An error occurred while deleting the shift.',
+                    'error'
+                );
+                setTimeout(() => {
+                    alert('Error deleting shift');
+                }, 500);
             } finally {
                 editDeleteBtn.disabled = false;
             }

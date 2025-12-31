@@ -425,7 +425,7 @@
             </div>
             <div class="header-details">
                 <div>
-                    <strong>Employee ID:</strong> {{ $user->employee_id ?? 'N/A' }}
+                    <strong>Employee ID:</strong> {{ $staff->employee_id ?? 'N/A' }}
                 </div>
                 <div>
                     <strong>Payroll Period:</strong> {{ $month }}
