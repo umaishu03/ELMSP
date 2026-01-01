@@ -76,11 +76,12 @@ class User extends Authenticatable
 
     /**
      * Get the admin record associated with the user
+     * NOTE: Admin table removed - admin users are identified by role='admin' only
      */
-    public function admin()
-    {
-        return $this->hasOne(Admin::class);
-    }
+    // public function admin()
+    // {
+    //     return $this->hasOne(Admin::class);
+    // }
 
     /**
      * Get all leave records for this user

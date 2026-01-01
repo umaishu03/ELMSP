@@ -25,11 +25,15 @@ class OvertimeApprovalController extends Controller
     // Approve an overtime
     public function approve(Request $request, Overtime $overtime)
     {
+        // Load staff relationship to get name for error messages
+        $overtime->load('staff.user');
+        $staffName = $overtime->staff && $overtime->staff->user ? $overtime->staff->user->name : 'Unknown Staff';
+        
         // Validate based on business rules
         $validation = Overtime::validateOT($overtime);
 
         if (! $validation['valid']) {
-            return redirect()->back()->with('error', $validation['message']);
+            return redirect()->back()->with('error', "Overtime validation failed for {$staffName}: {$validation['message']}");
         }
 
         $overtime->status = 'approved';
@@ -37,42 +41,68 @@ class OvertimeApprovalController extends Controller
         $overtime->save();
 
         // Load staff relationship
-        $overtime->load('staff');
+        $overtime->load('staff.user');
         
-        // Create or update shift to show 12 hours work for that day
+        $existingShift = null;
+        $shiftUpdated = false;
+        $staffName = $overtime->staff && $overtime->staff->user ? $overtime->staff->user->name : 'Unknown Staff';
+        
+        // Create or update shift to add OT hours to existing work hours
         if ($overtime->staff) {
             $otDate = Carbon::parse($overtime->ot_date)->format('Y-m-d');
+            $department = $overtime->staff->department;
+            $otHours = $overtime->hours;
             
             // Check if shift already exists for this staff on this date
             $existingShift = Shift::where('staff_id', $overtime->staff_id)
                 ->where('date', $otDate)
                 ->first();
             
-            // Calculate times for 12 hours work + 1 hour break = 13 hours total
-            // Default: 9:00 AM to 10:00 PM (13 hours total, 12h work + 1h break)
-            $startTime = '09:00';
-            $endTime = '22:00';
-            $breakMinutes = 60;
-            
-            // If shift exists, update it; otherwise create new one
-            if ($existingShift) {
-                // Update existing shift to show 12 hours work
+            if ($existingShift && $existingShift->start_time && $existingShift->end_time) {
+                // Shift exists: Add OT hours to existing end time
+                $currentEndTime = Carbon::parse($existingShift->end_time);
+                
+                // Calculate new end time by adding OT hours
+                $newEndTime = $currentEndTime->copy()->addHours($otHours);
+                
+                // Update existing shift with new end time
                 $existingShift->update([
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'break_minutes' => $breakMinutes,
+                    'end_time' => $newEndTime->format('H:i'),
                     'rest_day' => false,
                 ]);
+                $shiftUpdated = true;
             } else {
-                // Create new shift showing 12 hours work
-                Shift::create([
-                    'staff_id' => $overtime->staff_id,
-                    'date' => $otDate,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'break_minutes' => $breakMinutes,
-                    'rest_day' => false,
-                ]);
+                // No shift exists or shift has no times: Create new shift with normal hours + OT hours
+                // Determine normal work hours based on department
+                $normalWorkHours = in_array(strtolower($department), ['manager', 'supervisor']) ? 12 : 7.5;
+                
+                // Default start time: 9:00 AM
+                $startTime = Carbon::parse('09:00');
+                
+                // Calculate end time: start + normal hours + OT hours + 1 hour break
+                $totalHours = $normalWorkHours + $otHours;
+                $endTime = $startTime->copy()->addHours($totalHours)->addHour(); // +1 hour for break
+                
+                // If shift exists but has no times, update it; otherwise create new
+                if ($existingShift) {
+                    $existingShift->update([
+                        'start_time' => $startTime->format('H:i'),
+                        'end_time' => $endTime->format('H:i'),
+                        'break_minutes' => 60,
+                        'rest_day' => false,
+                    ]);
+                    $shiftUpdated = true;
+                } else {
+                    // Create new shift
+                    Shift::create([
+                        'staff_id' => $overtime->staff_id,
+                        'date' => $otDate,
+                        'start_time' => $startTime->format('H:i'),
+                        'end_time' => $endTime->format('H:i'),
+                        'break_minutes' => 60,
+                        'rest_day' => false,
+                    ]);
+                }
             }
         }
 
@@ -82,18 +112,26 @@ class OvertimeApprovalController extends Controller
         $weekStart = $otDateCarbon->copy()->startOfWeek(); // Monday of that week
         
         // Redirect to timetable with the week_start parameter
+        $message = $shiftUpdated 
+            ? "Overtime approved for {$staffName}. Shift updated: Added {$overtime->hours} OT hours to existing work hours."
+            : "Overtime approved for {$staffName}. New shift created: {$overtime->hours} OT hours added to normal work hours.";
+        
         return redirect()->route('admin.staff-timetable', [
             'week_start' => $weekStart->format('Y-m-d')
-        ])->with('success', 'Overtime approved. Timetable updated to show 12 hours work for that day.');
+        ])->with('success', $message);
     }
 
     // Reject an overtime
     public function reject(Request $request, Overtime $overtime)
     {
+        // Load staff relationship to get name
+        $overtime->load('staff.user');
+        $staffName = $overtime->staff && $overtime->staff->user ? $overtime->staff->user->name : 'Unknown Staff';
+        
         $overtime->status = 'rejected';
         $overtime->remarks = $request->input('remarks') ?? ('Rejected by admin ' . Auth::id());
         $overtime->save();
 
-        return redirect()->back()->with('success', 'Overtime rejected');
+        return redirect()->back()->with('success', "Overtime rejected for {$staffName}");
     }
 }

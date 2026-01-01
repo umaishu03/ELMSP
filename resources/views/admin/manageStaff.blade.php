@@ -68,6 +68,15 @@
     </div>
 @endif
 
+@if(session('error'))
+    <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div class="flex items-start">
+            <i class="fas fa-exclamation-circle mr-2 mt-1"></i>
+            <div>{!! session('error') !!}</div>
+        </div>
+    </div>
+@endif
+
 
 
 <!-- Section Title -->
@@ -115,8 +124,8 @@
                         <div class="text-sm text-gray-900">
                             @if($user->staff)
                                 {{ $user->staff->employee_id }}
-                            @elseif($user->admin)
-                                {{ $user->admin->employee_id }}
+                            @elseif($user->role === 'admin')
+                                N/A
                             @else
                                 N/A
                             @endif
@@ -127,9 +136,9 @@
                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ \App\Http\Controllers\StaffController::getDepartmentColor($user->staff->department) }}">
                                 {{ ucfirst($user->staff->department) }}
                             </span>
-                        @elseif($user->admin)
-                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ \App\Http\Controllers\StaffController::getDepartmentColor($user->admin->department) }}">
-                                {{ ucfirst($user->admin->department) }}
+                        @elseif($user->role === 'admin')
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Admin
                             </span>
                         @else
                             <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">

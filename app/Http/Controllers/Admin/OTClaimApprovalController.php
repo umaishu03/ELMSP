@@ -15,13 +15,17 @@ class OTClaimApprovalController extends Controller
      */
     public function approve(OTClaim $otClaim)
     {
+        // Get user early for error messages
+        $user = $this->getUserFromClaim($otClaim);
+        $staffName = $user ? $user->name : 'Unknown Staff';
+        
         // Get raw data directly from database to ensure we have the correct status and claim_type
         // This bypasses any model caching issues
         $rawData = DB::table('ot_claims')->where('id', $otClaim->id)->first();
         
         if (!$rawData) {
             \Log::error('OT Claim not found in database', ['claim_id' => $otClaim->id]);
-            return back()->with('error', 'OT Claim not found.');
+            return back()->with('error', "OT Claim not found for {$staffName}.");
         }
         
         // Verify claim_type from database - MUST be 'payroll' for salary claims
@@ -53,9 +57,6 @@ class OTClaimApprovalController extends Controller
             $otClaim->claim_type = $claimType;
         }
         
-        // Get user from overtime records (since user_id column was removed)
-        $user = $this->getUserFromClaim($otClaim);
-        
         // Log for debugging
         \Log::info('Approving OT Claim', [
             'claim_id' => $otClaim->id,
@@ -70,7 +71,8 @@ class OTClaimApprovalController extends Controller
                 'claim_id' => $otClaim->id,
                 'current_status' => $statusDisplay,
             ]);
-            return back()->with('error', "This claim has already been {$statusDisplay}. Only pending claims can be approved.");
+            $claimTypeLabel = $claimType === 'payroll' ? 'Salary Claim' : 'Replacement Leave Claim';
+            return back()->with('error', "{$claimTypeLabel} for {$staffName} has already been {$statusDisplay}. Only pending claims can be approved.");
         }
 
         // Update ONLY the status field - do not change claim_type
@@ -92,7 +94,9 @@ class OTClaimApprovalController extends Controller
             'user_id' => $user ? $user->id : null,
         ]);
 
-        return back()->with('success', 'OT Claim approved successfully! Payroll has been updated.');
+        $staffName = $user ? $user->name : 'Unknown Staff';
+        $claimTypeLabel = $claimType === 'payroll' ? 'Salary Claim' : 'Replacement Leave Claim';
+        return back()->with('success', "{$claimTypeLabel} approved successfully for {$staffName}! Payroll has been updated.");
     }
 
     /**
@@ -104,9 +108,13 @@ class OTClaimApprovalController extends Controller
         // This bypasses any model caching issues
         $rawData = DB::table('ot_claims')->where('id', $otClaim->id)->first();
         
+        // Get user early for error messages
+        $user = $this->getUserFromClaim($otClaim);
+        $staffName = $user ? $user->name : 'Unknown Staff';
+        
         if (!$rawData) {
             \Log::error('OT Claim not found in database', ['claim_id' => $otClaim->id]);
-            return back()->with('error', 'OT Claim not found.');
+            return back()->with('error', "OT Claim not found for {$staffName}.");
         }
         
         $status = $rawData->status ?? 'pending';
@@ -128,9 +136,13 @@ class OTClaimApprovalController extends Controller
         
         if ($status !== 'pending') {
             $statusDisplay = $status ?: '(empty/null)';
-            return back()->with('error', "This claim has already been {$statusDisplay}. Only pending claims can be rejected.");
+            $claimTypeLabel = $claimType === 'payroll' ? 'Salary Claim' : 'Replacement Leave Claim';
+            return back()->with('error', "{$claimTypeLabel} for {$staffName} has already been {$statusDisplay}. Only pending claims can be rejected.");
         }
 
+        // User already retrieved above
+        $claimTypeLabel = $claimType === 'payroll' ? 'Salary Claim' : 'Replacement Leave Claim';
+        
         // Update ONLY the status field - do not change claim_type
         DB::table('ot_claims')
             ->where('id', $otClaim->id)
@@ -139,7 +151,7 @@ class OTClaimApprovalController extends Controller
         // Refresh the model
         $otClaim->refresh();
 
-        return back()->with('success', 'OT Claim rejected successfully!');
+        return back()->with('success', "{$claimTypeLabel} rejected successfully for {$staffName}!");
     }
 
     /**

@@ -31,7 +31,7 @@ This document describes the new database tables and relationships for the automa
 
 - **Maximum OT hours per person per day:**
   - Manager/Supervisor: 2 hours/day (12 hours workday)
-  - Others: 4.5 hours/day (7.5 hours workday)
+  - Others: 4 hours/day (7.5 hours workday)
 
 ---
 
@@ -214,7 +214,7 @@ Net Salary:                RM2000.15
 1. Staff applies for OT on specific date
 2. System checks:
    - Department OT limit for that day
-   - Max hours per person (2 or 4.5)
+   - Max hours per person (2 or 4)
 3. If approved:
    - Auto-approved
    - Available for claiming

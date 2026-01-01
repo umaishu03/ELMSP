@@ -43,15 +43,15 @@ class Leave extends Model
         'marriage' => 6,
     ];
 
-    // Department leave constraints (max people per day)
+    // Department leave constraints (max people per day, excluding rest days)
     public static $departmentConstraints = [
-        'waiter' => 4,
-        'kitchen' => 3,
+        'manager' => 1,
+        'supervisor' => 1,
         'cashier' => 2,
-        'barista' => 2,
-        'joki' => 2,
-        'manager' => 2,      // 2 days per week
-        'supervisor' => 2,   // 2 days per week
+        'barista' => 1,
+        'joki' => 1,
+        'waiter' => 3,
+        'kitchen' => 2,
     ];
 
     /**
@@ -127,16 +127,41 @@ class Leave extends Model
             return $this->checkManagerSupervisorConstraint();
         }
 
-        // For other departments: check max people per day
+        // For other departments: check max people per day (excluding rest days)
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            $leaveCountThisDay = self::whereHas('staff', function ($q) use ($department) {
+            // Check if this date is a rest day for the staff member taking leave
+            $staffShiftOnDate = \App\Models\Shift::where('staff_id', $this->staff_id)
+                ->whereDate('date', $date)
+                ->first();
+            
+            // Skip rest days - leave constraints don't apply to rest days
+            if ($staffShiftOnDate && $staffShiftOnDate->rest_day) {
+                continue;
+            }
+            
+            // Get all approved leaves for this date in the department
+            $leavesOnDate = self::whereHas('staff', function ($q) use ($department) {
                     $q->where('department', $department);
                 })
                 ->where('status', 'approved')
                 ->where('auto_approved', true)
                 ->whereDate('start_date', '<=', $date)
                 ->whereDate('end_date', '>=', $date)
-                ->count();
+                ->with('staff')
+                ->get();
+            
+            // Count only leaves where this date is NOT a rest day for the staff member
+            $leaveCountThisDay = 0;
+            foreach ($leavesOnDate as $leave) {
+                $shiftOnDate = \App\Models\Shift::where('staff_id', $leave->staff_id)
+                    ->whereDate('date', $date)
+                    ->first();
+                
+                // Only count if this date is NOT a rest day for this staff member
+                if (!$shiftOnDate || !$shiftOnDate->rest_day) {
+                    $leaveCountThisDay++;
+                }
+            }
 
             if ($leaveCountThisDay >= $maxPeople) {
                 return false; // Department already has max people on this day
@@ -147,30 +172,57 @@ class Leave extends Model
     }
 
     /**
-     * Check manager/supervisor constraint: max 2 days per week
+     * Check manager/supervisor constraint: max 1 person per day (excluding rest days)
      */
     public function checkManagerSupervisorConstraint()
     {
-        $staffId = $this->staff_id;
+        $department = $this->staff?->department;
         $startDate = $this->start_date;
+        $endDate = $this->end_date;
+        $maxPeople = self::$departmentConstraints[$department] ?? 1;
 
-        // Get the week start (Monday)
-        $weekStart = $startDate->copy()->startOfWeek();
-        $weekEnd = $weekStart->copy()->endOfWeek();
+        // Check max people per day (excluding rest days)
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            // Check if this date is a rest day for the staff member taking leave
+            $staffShiftOnDate = \App\Models\Shift::where('staff_id', $this->staff_id)
+                ->whereDate('date', $date)
+                ->first();
+            
+            // Skip rest days - leave constraints don't apply to rest days
+            if ($staffShiftOnDate && $staffShiftOnDate->rest_day) {
+                continue;
+            }
+            
+            // Get all approved leaves for this date in the department
+            $leavesOnDate = self::whereHas('staff', function ($q) use ($department) {
+                    $q->where('department', $department);
+                })
+                ->where('status', 'approved')
+                ->where('auto_approved', true)
+                ->whereDate('start_date', '<=', $date)
+                ->whereDate('end_date', '>=', $date)
+                ->with('staff')
+                ->get();
+            
+            // Count only leaves where this date is NOT a rest day for the staff member
+            $leaveCountThisDay = 0;
+            foreach ($leavesOnDate as $leave) {
+                $shiftOnDate = \App\Models\Shift::where('staff_id', $leave->staff_id)
+                    ->whereDate('date', $date)
+                    ->first();
+                
+                // Only count if this date is NOT a rest day for this staff member
+                if (!$shiftOnDate || !$shiftOnDate->rest_day) {
+                    $leaveCountThisDay++;
+                }
+            }
 
-        // Count approved leave days for this staff in this week
-        $daysInWeek = self::where('staff_id', $staffId)
-            ->where('status', 'approved')
-            ->where('auto_approved', true)
-            ->whereDate('start_date', '<=', $weekEnd)
-            ->whereDate('end_date', '>=', $weekStart)
-            ->sum('total_days');
+            if ($leaveCountThisDay >= $maxPeople) {
+                return false; // Department already has max people on this day
+            }
+        }
 
-        // Add current leave days
-        $totalDays = $daysInWeek + $this->total_days;
-
-        // Check if exceeds 2 days per week
-        return $totalDays <= 2;
+        return true; // All days have available slots
     }
 
     /**

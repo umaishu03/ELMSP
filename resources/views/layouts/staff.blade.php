@@ -45,7 +45,7 @@
 </head>
 <body class="bg-gray-100">
     <!-- Header -->
-    <header class="gradient-header h-16 flex items-center justify-between px-6 shadow-lg fixed top-0 left-0 right-0 z-50">
+    <header class="gradient-header h-16 flex items-center justify-between px-6 shadow-lg fixed top-0 left-0 right-0 z-[60]" style="pointer-events: auto;">
         <div class="flex items-center">
             <button id="sidebarToggle" class="text-black text-xl mr-4">
                 <i class="fas fa-bars"></i>
@@ -53,23 +53,23 @@
         </div>
         <div class="flex items-center">
             <div class="relative">
-                <button id="userMenuButton" class="text-black text-xl hover:text-gray-600 transition-colors">
+                <button id="userMenuButton" class="text-black text-xl hover:text-gray-600 transition-colors" style="pointer-events: auto; position: relative; z-index: 70;">
                     <i class="fas fa-user-circle"></i>
                 </button>
                 
                 <!-- Dropdown Menu -->
-                <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden">
+                <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-[70] hidden" style="pointer-events: auto;">
                     <div class="px-4 py-2 text-sm text-gray-700 border-b">
                         <div class="font-medium">{{ Auth::user()->name }}</div>
                         <div class="text-gray-500">{{ Auth::user()->email }}</div>
                     </div>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        <i class="fas fa-cog mr-2"></i>Settings
+                    <a href="{{ route('profile.show') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-user mr-2"></i>Profile
                     </a>
                     <div class="border-t">
-                        <form method="POST" action="{{ route('logout') }}">
+                        <form method="POST" action="{{ route('logout') }}" id="logoutForm" style="pointer-events: auto;">
                             @csrf
-                            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100" style="pointer-events: auto; cursor: pointer;" onclick="event.stopPropagation(); return true;">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
                             </button>
                         </form>
@@ -222,6 +222,16 @@
         document.addEventListener('click', function(e) {
             const userMenu = document.getElementById('userMenu');
             const userMenuButton = document.getElementById('userMenuButton');
+            const logoutForm = userMenu ? userMenu.querySelector('form[action*="logout"]') : null;
+            const logoutButton = logoutForm ? logoutForm.querySelector('button[type="submit"]') : null;
+            
+            // Don't close menu if clicking on logout button or form
+            if (logoutButton && (logoutButton.contains(e.target) || e.target === logoutButton)) {
+                return; // Allow logout to proceed
+            }
+            if (logoutForm && logoutForm.contains(e.target)) {
+                return; // Allow logout form to submit
+            }
             
             if (!userMenu.contains(e.target) && !userMenuButton.contains(e.target)) {
                 userMenu.classList.add('hidden');
@@ -261,6 +271,26 @@
                     this.classList.add('active');
                 });
             });
+            
+            // Ensure logout button is always clickable
+            const logoutForm = document.getElementById('logoutForm');
+            const logoutButton = logoutForm ? logoutForm.querySelector('button[type="submit"]') : null;
+            
+            if (logoutButton) {
+                // Remove any event listeners that might block it
+                logoutButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    // Allow form to submit normally
+                    return true;
+                }, true); // Use capture phase to ensure it fires first
+                
+                logoutForm.addEventListener('submit', function(e) {
+                    e.stopPropagation();
+                    // Allow form submission
+                    return true;
+                }, true);
+            }
         });
     </script>
 </body>

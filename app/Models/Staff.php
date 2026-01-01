@@ -23,6 +23,17 @@ class Staff extends Model
         'salary' => 'decimal:2',
     ];
 
+    // Department employee limits (total staff + admin per department)
+    public static $departmentLimits = [
+        'manager' => 1,
+        'supervisor' => 2,
+        'cashier' => 5,
+        'barista' => 4,
+        'joki' => 4,
+        'waiter' => 11,
+        'kitchen' => 8,
+    ];
+
     /**
      * Get the user that owns the staff record
      */
@@ -85,5 +96,48 @@ class Staff extends Model
     public function payrolls()
     {
         return $this->user->payrolls();
+    }
+
+    /**
+     * Check if department has reached its employee limit
+     * Counts Staff records in the department
+     * 
+     * @param string $department
+     * @param int|null $excludeStaffId Staff ID to exclude from count (for updates)
+     * @param int|null $excludeAdminId (Deprecated - admin table removed, kept for backward compatibility)
+     * @return array ['reached' => bool, 'current' => int, 'limit' => int]
+     */
+    public static function checkDepartmentLimit($department, $excludeStaffId = null, $excludeAdminId = null)
+    {
+        $limit = self::$departmentLimits[$department] ?? null;
+        
+        if ($limit === null) {
+            return [
+                'reached' => false,
+                'current' => 0,
+                'limit' => null,
+                'message' => 'No limit set for this department'
+            ];
+        }
+
+        // Count active staff in this department
+        $staffQuery = self::where('department', $department)
+            ->where('status', 'active');
+        if ($excludeStaffId) {
+            $staffQuery->where('id', '!=', $excludeStaffId);
+        }
+        $staffCount = $staffQuery->count();
+
+        // Admin table removed - only count staff records
+        // Admin users are identified by users.role = 'admin' but don't have separate records
+        $currentCount = $staffCount;
+
+        $departmentName = ucfirst($department);
+        return [
+            'reached' => $currentCount >= $limit,
+            'current' => $currentCount,
+            'limit' => $limit,
+            'message' => "{$departmentName} limit: {$limit} person" . ($limit > 1 ? 's' : '') . " only. Current: {$currentCount} person" . ($currentCount > 1 ? 's' : '') . " already registered."
+        ];
     }
 }

@@ -32,16 +32,16 @@
             @csrf
             @if(session('success'))
                 <!-- Success Modal -->
-                <div id="claimSuccessModal" class="fixed inset-0 z-50 flex items-center justify-center" aria-modal="true" role="dialog">
-                    <div class="absolute inset-0 bg-black opacity-40"></div>
-                    <div class="bg-white rounded-lg shadow-lg p-6 z-10 w-full max-w-md mx-4">
+                <div id="claimSuccessModal" class="fixed z-50 flex items-center justify-center" aria-modal="true" role="dialog" style="top: 4rem; left: 0; right: 0; bottom: 0; pointer-events: none;">
+                    <div class="absolute bg-black opacity-40 z-40" style="pointer-events: auto; top: 0; left: 0; right: 0; bottom: 0;"></div>
+                    <div class="bg-white rounded-lg shadow-lg p-6 z-50 relative w-full max-w-md mx-4" style="pointer-events: auto;">
                         <div class="flex items-start justify-between">
                             <h3 class="text-lg font-semibold text-gray-900">Success</h3>
-                            <button id="closeClaimSuccessX" class="text-gray-400 hover:text-gray-600">&times;</button>
+                            <button id="closeClaimSuccessX" class="text-gray-400 hover:text-gray-600 text-2xl leading-none cursor-pointer">&times;</button>
                         </div>
                         <div class="mt-3 text-sm text-gray-700">{{ session('success') }}</div>
                         <div class="mt-6 text-right">
-                            <button id="closeClaimSuccess" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold">OK</button>
+                            <button id="closeClaimSuccess" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold cursor-pointer">OK</button>
                         </div>
                     </div>
                 </div>
@@ -430,7 +430,8 @@ function updateAvailability() {
     const badge = document.getElementById('availabilityBadge');
     const text = document.getElementById('availabilityText');
     const icon = document.getElementById('availabilityIcon');
-    const submitBtn = document.querySelector('button[type="submit"]');
+    const claimForm = document.getElementById('claimOvertimeForm');
+    const submitBtn = claimForm ? claimForm.querySelector('button[type="submit"]') : null;
     const serverTotal = parseFloat(badge.dataset.totalAvailableHours) || 0;
     const selectedTotal = computeSelectedHours();
     const claimType = document.getElementById('claimType').value;
@@ -453,14 +454,18 @@ function updateAvailability() {
         badge.className = 'inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 text-sm font-semibold rounded-full';
         icon.className = 'fas fa-check-circle';
         text.textContent = 'Available for claim';
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
     } else {
         badge.className = 'inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold rounded-full';
         icon.className = 'fas fa-times-circle';
         text.textContent = 'Not available for claim';
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+        }
     }
 }
 
@@ -482,14 +487,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // If success modal exists, wire close handlers
     const modal = document.getElementById('claimSuccessModal');
     if (modal) {
+        const backdrop = modal.querySelector('.absolute.inset-0');
+        const modalContent = modal.querySelector('.bg-white');
         const closeBtn = document.getElementById('closeClaimSuccess');
         const closeX = document.getElementById('closeClaimSuccessX');
-        function closeModal() { modal.remove(); }
+        
+        function closeModal() { 
+            modal.style.display = 'none';
+            modal.remove();
+        }
+        
         if (closeBtn) closeBtn.addEventListener('click', closeModal);
         if (closeX) closeX.addEventListener('click', closeModal);
-        // close on outside click
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) closeModal();
+        
+        // Close on backdrop click (but not on modal content)
+        if (backdrop) {
+            backdrop.addEventListener('click', closeModal);
+        }
+        
+        // Prevent clicks inside modal from closing it
+        if (modalContent) {
+            modalContent.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        }
+        
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal && modal.style.display !== 'none') {
+                closeModal();
+            }
         });
     }
 });

@@ -57,12 +57,17 @@
                         @php
                             $months = [];
                             $seenMonths = [];
-                            for ($i = 0; $i < 12; $i++) {
-                                $date = now()->subMonths($i);
-                                $value = $date->format('Y-m');
-                                $label = $date->format('F Y');
+                            
+                            // Generate all months from January 2025 to current month
+                            $startDate = \Carbon\Carbon::create(2025, 1, 1)->startOfMonth();
+                            $endDate = now()->endOfMonth();
+                            
+                            // Generate all months from start date to current month
+                            $current = $endDate->copy();
+                            while ($current->gte($startDate)) {
+                                $value = $current->format('Y-m');
+                                $label = $current->format('F Y');
                                 
-                                // Only add if we haven't seen this month value before
                                 if (!in_array($value, $seenMonths)) {
                                     $months[] = [
                                         'value' => $value,
@@ -70,7 +75,14 @@
                                     ];
                                     $seenMonths[] = $value;
                                 }
+                                
+                                $current->subMonth();
                             }
+                            
+                            // Sort months by value (newest first)
+                            usort($months, function($a, $b) {
+                                return strcmp($b['value'], $a['value']);
+                            });
                         @endphp
                         @foreach($months as $month)
                             <option value="{{ $month['value'] }}">{{ $month['label'] }}</option>

@@ -7,7 +7,7 @@ use League\Csv\Reader;
 use League\Csv\Statement;
 use App\Models\User;
 use App\Models\Staff;
-use App\Models\Admin;
+// Admin model removed - admin table dropped
 use App\Mail\UserCredentials;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -77,7 +77,11 @@ class StaffRegisterController extends Controller
                     $createdUsers[] = $user;
                     $createdCount++;
                 } catch (\Exception $e) {
-                    $errors[] = "Row " . ($offset + 2) . ": Failed to create user - " . $e->getMessage();
+                    // Only add error if it's not already in the errors array (avoid duplicates)
+                    $errorMessage = "Row " . ($offset + 2) . ": Failed to create user - " . $e->getMessage();
+                    if (!in_array($errorMessage, $errors)) {
+                        $errors[] = $errorMessage;
+                    }
                 }
             }
             
@@ -100,8 +104,10 @@ class StaffRegisterController extends Controller
             $redirect = redirect()->route('admin.manage-staff')->with('success', $successMessage);
 
             // Include detailed error list (row + message) when any failures occurred
+            // Remove duplicates before displaying
             if ($failedCount > 0) {
-                $errorDetails = 'Error details:<br>' . implode('<br>', $errors);
+                $uniqueErrors = array_unique($errors);
+                $errorDetails = implode('<br>', $uniqueErrors);
                 $redirect = $redirect->with('error', $errorDetails);
             }
 
@@ -141,8 +147,15 @@ class StaffRegisterController extends Controller
             $errors[] = "Row {$rowNumber}: Department is required";
         } else {
             $validDepartments = ['manager', 'supervisor', 'cashier', 'barista', 'joki', 'waiter', 'kitchen'];
-            if (!in_array(strtolower($record['department']), $validDepartments)) {
-                $errors[] = "Row {$rowNumber}: Invalid department. Must be one of: " . implode(', ', $validDepartments);
+            $department = strtolower(trim($record['department']));
+            if (!in_array($department, $validDepartments)) {
+                $errors[] = "Row {$rowNumber}: Invalid department '{$record['department']}'. Must be one of: " . implode(', ', $validDepartments);
+            } else {
+                // Check department limit FIRST before other validations
+                $limitCheck = Staff::checkDepartmentLimit($department);
+                if ($limitCheck['reached']) {
+                    $errors[] = "Row {$rowNumber}: {$limitCheck['message']}";
+                }
             }
         }
         
@@ -172,10 +185,9 @@ class StaffRegisterController extends Controller
             throw new \Exception("User with email {$record['email']} already exists");
         }
         
-        // Check if employee ID already exists in staff or admin tables
+        // Check if employee ID already exists in staff table
         $existingStaff = Staff::where('employee_id', $record['id'])->first();
-        $existingAdmin = Admin::where('employee_id', $record['id'])->first();
-        if ($existingStaff || $existingAdmin) {
+        if ($existingStaff) {
             throw new \Exception("Employee ID {$record['id']} already exists");
         }
         
@@ -195,11 +207,11 @@ class StaffRegisterController extends Controller
         ]);
         
         // Step 7: Role-Specific Record Creation
+        // Note: Admin users don't need separate records - role is stored in users.role
         if ($role === 'staff') {
             $this->createStaffRecord($user, $employeeId, $department);
-        } elseif ($role === 'admin') {
-            $this->createAdminRecord($user, $employeeId, $department);
         }
+        // Admin role users are identified by users.role = 'admin' only
         
         // Step 8: Send Email with Credentials
         try {
@@ -221,6 +233,13 @@ class StaffRegisterController extends Controller
      */
     private function createStaffRecord($user, $employeeId, $department)
     {
+        // Note: Department limit is already checked in validateRecord()
+        // This is just a safety check in case validation was bypassed
+        $limitCheck = Staff::checkDepartmentLimit($department);
+        if ($limitCheck['reached']) {
+            throw new \Exception($limitCheck['message']);
+        }
+
         Staff::create([
             'user_id' => $user->id,
             'employee_id' => $employeeId,
@@ -231,21 +250,8 @@ class StaffRegisterController extends Controller
         ]);
     }
     
-    /**
-     * Create admin record
-     */
-    private function createAdminRecord($user, $employeeId, $department)
-    {
-        Admin::create([
-            'user_id' => $user->id,
-            'employee_id' => $employeeId,
-            'department' => $department,
-            'admin_level' => 'super_admin',
-            'permissions' => $this->getDefaultAdminPermissions($department),
-            'appointment_date' => now(),
-            'status' => 'active',
-        ]);
-    }
+    // Admin record creation removed - admin table dropped
+    // Admin users are identified by users.role = 'admin' only
     
     /**
      * Get default salary based on department

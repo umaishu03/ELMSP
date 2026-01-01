@@ -58,7 +58,12 @@ class PayrollController extends Controller
                 $restDaysInMonth = floor($weeksInMonth); // 1 rest day per week
                 $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth; // Always 27 for December
                 
+                // Get unpaid leave type ID for filtering
+                $unpaidLeaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
+                $unpaidLeaveTypeId = $unpaidLeaveType ? $unpaidLeaveType->id : null;
+
                 // Count actual shifts worked (only from hire date onwards for mid-month joins)
+                // Note: Exclude paid leaves but include unpaid leave (unpaid will be deducted separately)
                 $workingDays = 0;
                 
                 foreach ($shifts as $shift) {
@@ -69,15 +74,24 @@ class PayrollController extends Controller
                     
                     // Only count shifts that are:
                     // 1. Not rest days (rest_day = false or null)
-                    // 2. Not on leave (leave_id is null)
+                    // 2. Not on paid leave (unpaid leave is included, will be deducted separately)
                     // 3. Have start_time and end_time (actual working shift)
                     // 4. On or after the calculation start date (hire date or month start)
                     $isRestDay = $shift->rest_day ?? false;
-                    $isOnLeave = !empty($shift->leave_id);
                     $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
                     $isAfterStartDate = $shiftDate->startOfDay()->gte($calcStartDate->startOfDay());
                     
-                    if (!$isRestDay && !$isOnLeave && $hasWorkingHours && $isAfterStartDate) {
+                    // Check if on leave
+                    $isOnLeave = !empty($shift->leave_id);
+                    $isOnUnpaidLeave = false;
+                    if ($isOnLeave && $unpaidLeaveTypeId) {
+                        // Check if this leave is unpaid leave
+                        $leave = \App\Models\Leave::find($shift->leave_id);
+                        $isOnUnpaidLeave = $leave && $leave->leave_type_id == $unpaidLeaveTypeId;
+                    }
+                    
+                    // Include shift if: not rest day, has working hours, after start date, and (not on leave OR on unpaid leave)
+                    if (!$isRestDay && $hasWorkingHours && $isAfterStartDate && (!$isOnLeave || $isOnUnpaidLeave)) {
                         $workingDays++;
                     }
                 }
@@ -128,12 +142,99 @@ class PayrollController extends Controller
                 $normal_ot_hours = $otClaims->sum('fulltime_hours');
                 $ph_ot_hours = $otClaims->sum('public_holiday_hours');
 
-                // Public holiday pay (worked on PH, not OT):
-                $public_holiday_hours = $staff->public_holiday_hours ?? 0;
+                // Calculate public holiday pay from actual shifts worked on public holidays
+                $public_holiday_hours = 0;
+                $publicHolidays = $this->getPublicHolidaysForMonth($year, $month);
+                
+                foreach ($shifts as $shift) {
+                    $shiftDate = $shift->date instanceof \Carbon\Carbon 
+                        ? $shift->date 
+                        : \Carbon\Carbon::parse($shift->date);
+                    
+                    $shiftDateStr = $shiftDate->format('Y-m-d');
+                    
+                    // Check if this shift is on a public holiday
+                    if (in_array($shiftDateStr, $publicHolidays)) {
+                        // Only count if it's a working shift (has hours, not rest day, not on leave)
+                        $isRestDay = $shift->rest_day ?? false;
+                        $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
+                        $isOnLeave = !empty($shift->leave_id);
+                        
+                        if (!$isRestDay && $hasWorkingHours && !$isOnLeave) {
+                            // Calculate hours worked (excluding break time)
+                            $startTime = \Carbon\Carbon::parse($shift->start_time);
+                            $endTime = \Carbon\Carbon::parse($shift->end_time);
+                            
+                            // Handle overnight shifts
+                            if ($endTime <= $startTime) {
+                                $endTime->addDay();
+                            }
+                            
+                            // Calculate total minutes worked
+                            $totalMinutes = $startTime->diffInMinutes($endTime);
+                            
+                            // Subtract break minutes (break time is not paid)
+                            $breakMinutes = $shift->break_minutes ?? 0;
+                            $workedMinutes = $totalMinutes - $breakMinutes;
+                            
+                            // Convert to hours
+                            $shiftHours = max(0, $workedMinutes / 60);
+                            
+                            $public_holiday_hours += $shiftHours;
+                        }
+                    }
+                }
+                
                 $public_holiday_pay = 15.38 * $public_holiday_hours;
 
+                // Calculate unpaid leave deduction
+                $unpaidLeaveDeduction = 0;
+                $unpaidLeaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
+                if ($unpaidLeaveType) {
+                    // Get approved unpaid leave that overlaps with this month
+                    $unpaidLeaves = \App\Models\Leave::where('staff_id', $staff->id)
+                        ->where('leave_type_id', $unpaidLeaveType->id)
+                        ->where('status', 'approved')
+                        ->where(function($query) use ($monthStart, $monthEnd) {
+                            // Leave starts in month
+                            $query->whereBetween('start_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                                  // Or leave ends in month
+                                  ->orWhereBetween('end_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                                  // Or leave spans the entire month
+                                  ->orWhere(function($q) use ($monthStart, $monthEnd) {
+                                      $q->where('start_date', '<=', $monthStart->format('Y-m-d'))
+                                        ->where('end_date', '>=', $monthEnd->format('Y-m-d'));
+                                  });
+                        })
+                        ->get();
+                    
+                    // Calculate actual unpaid leave days within the month
+                    $unpaidLeaveDays = 0;
+                    foreach ($unpaidLeaves as $leave) {
+                        $leaveStart = \Carbon\Carbon::parse($leave->start_date);
+                        $leaveEnd = \Carbon\Carbon::parse($leave->end_date);
+                        
+                        // Calculate overlap days
+                        $overlapStart = max($leaveStart, $monthStart);
+                        $overlapEnd = min($leaveEnd, $monthEnd);
+                        
+                        if ($overlapStart <= $overlapEnd) {
+                            $overlapDays = $overlapStart->diffInDays($overlapEnd) + 1;
+                            $unpaidLeaveDays += $overlapDays;
+                        }
+                    }
+                    
+                    // Calculate daily rate: (Full Basic Salary ÷ 27)
+                    $dailyRate = $totalWorkingDaysInMonth > 0 ? ($fullBasicSalary / $totalWorkingDaysInMonth) : 0;
+                    
+                    // Calculate deduction: unpaid leave days × daily rate
+                    $unpaidLeaveDeduction = $unpaidLeaveDays * $dailyRate;
+                }
+
                 // Get marketing bonus and status from payroll record if exists, otherwise default to 0
+                // Use calculated deduction (from unpaid leave) or fall back to stored value
                 $marketingBonus = 0;
+                $totalDeductions = $unpaidLeaveDeduction; // Use calculated deduction
                 $payrollStatus = 'draft';
                 $payrollRecord = \App\Models\Payroll::where('user_id', $user->id)
                     ->where('year', $year)
@@ -141,6 +242,10 @@ class PayrollController extends Controller
                     ->first();
                 if ($payrollRecord) {
                     $marketingBonus = $payrollRecord->marketing_bonus ?? 0;
+                    // If payroll record has deductions, use that (in case there are other deductions), otherwise use calculated
+                    if ($payrollRecord->total_deductions > 0) {
+                        $totalDeductions = $payrollRecord->total_deductions;
+                    }
                     $payrollStatus = $payrollRecord->status ?? 'draft';
                 }
 
@@ -152,6 +257,7 @@ class PayrollController extends Controller
                     'full_basic_salary' => $fullBasicSalary,
                     'fixed_commission' => $fixedCommission,
                     'marketing_bonus' => $marketingBonus,
+                    'total_deductions' => $totalDeductions,
                     'public_holiday_hours' => $public_holiday_hours,
                     'normal_ot_hours' => $normal_ot_hours,
                     'ph_ot_hours' => $ph_ot_hours,
@@ -228,7 +334,12 @@ class PayrollController extends Controller
             ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
             ->get();
 
+        // Get unpaid leave type ID for filtering
+        $unpaidLeaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
+        $unpaidLeaveTypeId = $unpaidLeaveType ? $unpaidLeaveType->id : null;
+
         // Count actual shifts worked (only from hire date onwards for mid-month joins)
+        // Note: Exclude paid leaves but include unpaid leave (unpaid will be deducted separately)
         $workingDays = 0;
         foreach ($shifts as $shift) {
             $shiftDate = $shift->date instanceof \Carbon\Carbon 
@@ -236,11 +347,20 @@ class PayrollController extends Controller
                 : \Carbon\Carbon::parse($shift->date);
             
             $isRestDay = $shift->rest_day ?? false;
-            $isOnLeave = !empty($shift->leave_id);
             $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
             $isAfterStartDate = $shiftDate->startOfDay()->gte($calcStartDate->startOfDay());
             
-            if (!$isRestDay && !$isOnLeave && $hasWorkingHours && $isAfterStartDate) {
+            // Check if on leave
+            $isOnLeave = !empty($shift->leave_id);
+            $isOnUnpaidLeave = false;
+            if ($isOnLeave && $unpaidLeaveTypeId) {
+                // Check if this leave is unpaid leave
+                $leave = \App\Models\Leave::find($shift->leave_id);
+                $isOnUnpaidLeave = $leave && $leave->leave_type_id == $unpaidLeaveTypeId;
+            }
+            
+            // Include shift if: not rest day, has working hours, after start date, and (not on leave OR on unpaid leave)
+            if (!$isRestDay && $hasWorkingHours && $isAfterStartDate && (!$isOnLeave || $isOnUnpaidLeave)) {
                 $workingDays++;
             }
         }
@@ -282,8 +402,95 @@ class PayrollController extends Controller
         $ph_ot_hours = $otClaims->sum('public_holiday_hours');
         $normal_ot_pay = $normal_ot_hours * 12.26;
         $ph_ot_pay = $ph_ot_hours * 21.68;
-        $public_holiday_hours = $staff->public_holiday_hours ?? 0;
+        
+        // Calculate public holiday pay from actual shifts worked on public holidays
+        $public_holiday_hours = 0;
+        $publicHolidays = $this->getPublicHolidaysForMonth($year, $month);
+        
+        foreach ($shifts as $shift) {
+            $shiftDate = $shift->date instanceof \Carbon\Carbon 
+                ? $shift->date 
+                : \Carbon\Carbon::parse($shift->date);
+            
+            $shiftDateStr = $shiftDate->format('Y-m-d');
+            
+            // Check if this shift is on a public holiday
+            if (in_array($shiftDateStr, $publicHolidays)) {
+                // Only count if it's a working shift (has hours, not rest day, not on leave)
+                $isRestDay = $shift->rest_day ?? false;
+                $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
+                $isOnLeave = !empty($shift->leave_id);
+                
+                if (!$isRestDay && $hasWorkingHours && !$isOnLeave) {
+                    // Calculate hours worked (excluding break time)
+                    $startTime = \Carbon\Carbon::parse($shift->start_time);
+                    $endTime = \Carbon\Carbon::parse($shift->end_time);
+                    
+                    // Handle overnight shifts
+                    if ($endTime <= $startTime) {
+                        $endTime->addDay();
+                    }
+                    
+                    // Calculate total minutes worked
+                    $totalMinutes = $startTime->diffInMinutes($endTime);
+                    
+                    // Subtract break minutes (break time is not paid)
+                    $breakMinutes = $shift->break_minutes ?? 0;
+                    $workedMinutes = $totalMinutes - $breakMinutes;
+                    
+                    // Convert to hours
+                    $shiftHours = max(0, $workedMinutes / 60);
+                    
+                    $public_holiday_hours += $shiftHours;
+                }
+            }
+        }
+        
         $public_holiday_pay = 15.38 * $public_holiday_hours;
+
+        // Calculate unpaid leave deduction
+        $unpaidLeaveDeduction = 0;
+        $unpaidLeaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
+        if ($unpaidLeaveType) {
+            // Get approved unpaid leave that overlaps with this month
+            $unpaidLeaves = \App\Models\Leave::where('staff_id', $staff->id)
+                ->where('leave_type_id', $unpaidLeaveType->id)
+                ->where('status', 'approved')
+                ->where(function($query) use ($monthStart, $monthEnd) {
+                    // Leave starts in month
+                    $query->whereBetween('start_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                          // Or leave ends in month
+                          ->orWhereBetween('end_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                          // Or leave spans the entire month
+                          ->orWhere(function($q) use ($monthStart, $monthEnd) {
+                              $q->where('start_date', '<=', $monthStart->format('Y-m-d'))
+                                ->where('end_date', '>=', $monthEnd->format('Y-m-d'));
+                          });
+                })
+                ->get();
+            
+            // Calculate actual unpaid leave days within the month
+            $unpaidLeaveDays = 0;
+            foreach ($unpaidLeaves as $leave) {
+                $leaveStart = \Carbon\Carbon::parse($leave->start_date);
+                $leaveEnd = \Carbon\Carbon::parse($leave->end_date);
+                
+                // Calculate overlap days
+                $overlapStart = max($leaveStart, $monthStart);
+                $overlapEnd = min($leaveEnd, $monthEnd);
+                
+                if ($overlapStart <= $overlapEnd) {
+                    $overlapDays = $overlapStart->diffInDays($overlapEnd) + 1;
+                    $unpaidLeaveDays += $overlapDays;
+                }
+            }
+            
+            // Calculate daily rate: (Full Basic Salary ÷ 27)
+            $dailyRate = $totalWorkingDaysInMonth > 0 ? ($fullBasicSalary / $totalWorkingDaysInMonth) : 0;
+            
+            // Calculate deduction: unpaid leave days × daily rate
+            $unpaidLeaveDeduction = $unpaidLeaveDays * $dailyRate;
+        }
 
         // Get existing payroll record
         $payroll = \App\Models\Payroll::where('user_id', $userId)
@@ -299,6 +506,9 @@ class PayrollController extends Controller
         // Calculate gross salary
         $grossSalary = $basic_salary + $fixedCommission + $marketingBonus 
             + $public_holiday_pay + $normal_ot_pay + $ph_ot_pay;
+
+        // Calculate total deductions (unpaid leave deduction)
+        $totalDeductions = $unpaidLeaveDeduction;
 
         // Get existing status or default to draft
         $status = $payroll ? ($payroll->status ?? 'draft') : 'draft';
@@ -316,7 +526,8 @@ class PayrollController extends Controller
                 'public_holiday_ot_hours' => $ph_ot_hours,
                 'public_holiday_ot_pay' => $ph_ot_pay,
                 'gross_salary' => $grossSalary,
-                'net_salary' => $grossSalary - ($payroll->total_deductions ?? 0),
+                'total_deductions' => $totalDeductions,
+                'net_salary' => $grossSalary - $totalDeductions,
             ]);
         } else {
             $payroll = \App\Models\Payroll::create([
@@ -333,8 +544,8 @@ class PayrollController extends Controller
                 'public_holiday_ot_hours' => $ph_ot_hours,
                 'public_holiday_ot_pay' => $ph_ot_pay,
                 'gross_salary' => $grossSalary,
-                'total_deductions' => 0,
-                'net_salary' => $grossSalary,
+                'total_deductions' => $totalDeductions,
+                'net_salary' => $grossSalary - $totalDeductions,
                 'status' => $status,
             ]);
         }
@@ -854,5 +1065,43 @@ class PayrollController extends Controller
             
             abort(500, 'Error generating PDF. Please try again or contact support.');
         }
+    }
+
+    /**
+     * Get public holidays for a specific month/year
+     * Returns array of date strings in Y-m-d format
+     */
+    private function getPublicHolidaysForMonth($year, $month)
+    {
+        // Public holidays for 2026 (can be extended for other years)
+        $allHolidays = [
+            '2026-01-01', // New Year's Day
+            '2026-01-31', // Thaipusam
+            '2026-02-01', // Federal Territory Day
+            '2026-02-17', // Chinese New Year
+            '2026-02-18', // Chinese New Year (2nd Day)
+            '2026-03-20', // Hari Raya Aidilfitri
+            '2026-03-21', // Hari Raya Aidilfitri (2nd Day)
+            '2026-05-01', // Labour Day / Vesak Day
+            '2026-05-27', // Hari Raya Aidiladha
+            '2026-06-06', // Agong's Birthday
+            '2026-07-16', // Awal Muharram
+            '2026-08-25', // Prophet Muhammad's Birthday
+            '2026-08-31', // Merdeka Day
+            '2026-09-16', // Malaysia Day
+            '2026-11-08', // Deepavali
+            '2026-12-25', // Christmas Day
+        ];
+
+        // Filter holidays for the specific month
+        $monthHolidays = [];
+        foreach ($allHolidays as $holiday) {
+            $holidayDate = \Carbon\Carbon::parse($holiday);
+            if ($holidayDate->year == $year && $holidayDate->month == $month) {
+                $monthHolidays[] = $holiday;
+            }
+        }
+
+        return $monthHolidays;
     }
 }

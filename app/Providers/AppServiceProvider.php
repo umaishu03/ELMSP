@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Set PHP timezone to match Laravel timezone (Malaysia time)
+        date_default_timezone_set(config('app.timezone'));
     }
 }

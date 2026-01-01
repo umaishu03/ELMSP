@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - ELMSP</title>
+    <title>Reset Password - ELMSP</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
@@ -22,12 +22,15 @@
             <div class="w-24 h-24 mx-auto mb-4 bg-white rounded-full shadow-lg flex items-center justify-center p-2">
                 <img src="{{ asset('images/elmsp-logo.png') }}" alt="ELMSP Logo" class="w-full h-full object-contain rounded-full">
             </div>
-            <h1 class="text-2xl font-semibold text-gray-700">Welcome Back</h1>
+            <h1 class="text-2xl font-semibold text-gray-700">Reset Password</h1>
+            <p class="text-sm text-gray-600 mt-2">Enter your new password below.</p>
         </div>
 
-        <!-- Login Form -->
-        <form method="POST" action="{{ route('login') }}" class="space-y-6">
+        <!-- Reset Password Form -->
+        <form method="POST" action="{{ route('password.update') }}" class="space-y-6">
             @csrf
+            <input type="hidden" name="token" value="{{ $token }}">
+            <input type="hidden" name="email" value="{{ $email ?? old('email') }}">
             
             <!-- Display validation errors -->
             @if ($errors->any())
@@ -37,31 +40,8 @@
                     @endforeach
                 </div>
             @endif
-            
-            <!-- Role Selection Field -->
-            <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="fas fa-user-tag text-gray-400"></i>
-                </div>
-                <select 
-                    id="role" 
-                    name="role" 
-                    class="w-full pl-10 pr-4 py-3 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer @error('role') ring-2 ring-red-500 @enderror"
-                    required
-                >
-                    <option value="">Select Role</option>
-                    <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Admin</option>
-                    <option value="staff" {{ old('role') == 'staff' ? 'selected' : '' }}>Staff</option>
-                </select>
-                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <i class="fas fa-chevron-down text-gray-400"></i>
-                </div>
-                @error('role')
-                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                @enderror
-            </div>
 
-            <!-- Email Field -->
+            <!-- Email Field (read-only) -->
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-envelope text-gray-400"></i>
@@ -69,17 +49,10 @@
                 <input 
                     type="email" 
                     id="email"
-                    name="email" 
-                    value="{{ old('email') }}"
-                    placeholder="Enter your email"
-                    class="w-full pl-10 pr-4 py-3 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors @error('email') ring-2 ring-red-500 @enderror"
-                    required
-                    autocomplete="email"
-                    autofocus
+                    value="{{ $email ?? old('email') }}"
+                    class="w-full pl-10 pr-4 py-3 bg-gray-100 border-0 rounded-xl text-gray-600"
+                    readonly
                 >
-                @error('email')
-                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                @enderror
             </div>
 
             <!-- Password Field -->
@@ -91,45 +64,52 @@
                     type="password" 
                     id="password"
                     name="password" 
-                    placeholder="Enter your password"
+                    placeholder="Enter new password"
                     class="w-full pl-10 pr-4 py-3 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors @error('password') ring-2 ring-red-500 @enderror"
                     required
-                    autocomplete="current-password"
+                    autocomplete="new-password"
+                    autofocus
                 >
                 @error('password')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
-            <!-- Forgot Password Link -->
-            <div class="text-right">
-                <a href="{{ route('password.request') }}" class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
-                    Forgot your password?
-                </a>
+            <!-- Confirm Password Field -->
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-lock text-gray-400"></i>
+                </div>
+                <input 
+                    type="password" 
+                    id="password_confirmation"
+                    name="password_confirmation" 
+                    placeholder="Confirm new password"
+                    class="w-full pl-10 pr-4 py-3 bg-gray-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors @error('password_confirmation') ring-2 ring-red-500 @enderror"
+                    required
+                    autocomplete="new-password"
+                >
+                @error('password_confirmation')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
-            <!-- Login Button -->
+            <!-- Submit Button -->
             <button 
                 type="submit"
                 class="w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-4 rounded-xl transition-colors duration-200"
             >
-                <i class="fas fa-sign-in-alt mr-2"></i>Login
+                <i class="fas fa-key mr-2"></i>Reset Password
             </button>
+
+            <!-- Back to Login Link -->
+            <div class="text-center">
+                <a href="{{ route('login') }}" class="text-blue-600 hover:text-blue-800 text-sm transition-colors">
+                    <i class="fas fa-arrow-left mr-1"></i>Back to Login
+                </a>
+            </div>
         </form>
-
     </div>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('role');
-        const emailInput = document.getElementById('email');
-        
-        roleSelect.addEventListener('change', function() {
-            if (this.value) {
-                emailInput.focus();
-            }
-        });
-    });
-    </script>
 </body>
 </html>
+

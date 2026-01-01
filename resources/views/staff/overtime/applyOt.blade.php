@@ -22,6 +22,19 @@
             @if(session('success'))
                 <div class="p-3 mb-4 bg-green-50 text-green-700 rounded">{{ session('success') }}</div>
             @endif
+            @if(session('error'))
+                <div class="p-3 mb-4 bg-red-50 text-red-700 rounded">{{ session('error') }}</div>
+            @endif
+            <!-- Weekly Limit Warning -->
+            <div id="weeklyLimitWarning" class="hidden p-4 mb-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                <div class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 mr-3"></i>
+                    <div>
+                        <p class="font-semibold text-yellow-800">Weekly OT Limit Warning</p>
+                        <p class="text-yellow-700 text-sm" id="weeklyLimitMessage"></p>
+                    </div>
+                </div>
+            </div>
             <!-- Employee Information Section -->
             <div class="px-8 py-6 border-b border-gray-100 bg-gray-50">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -40,7 +53,7 @@
                         <label class="block text-xs font-medium text-gray-600 mb-2">Employee ID</label>
                         <input type="text" 
                                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 bg-gray-100 text-gray-700" 
-                               value="{{ Auth::user()->staff->employee_id ?? Auth::user()->admin->employee_id ?? 'Not assigned' }}" 
+                               value="{{ Auth::user()->staff->employee_id ?? 'Not assigned' }}" 
                                readonly />
                     </div>
                 </div>
@@ -166,14 +179,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const hourLimits = {
         'manager': 2,
         'supervisor': 2,
-        'waiter': 4.5,
-        'cashier': 4.5,
-        'kitchen': 4.5,
-        'joki': 4.5,
-        'barista': 4.5
+        'waiter': 4,
+        'cashier': 4,
+        'kitchen': 4,
+        'joki': 4,
+        'barista': 4
     };
     
-    const hours = hourLimits[department] || 4.5;
+    const hours = hourLimits[department] || 4;
     hoursInput.value = hours;
 });
 
@@ -277,13 +290,88 @@ document.getElementById('otType').addEventListener('change', function() {
     }
 });
 
-// Form submission: confirm then allow normal POST to server
-document.getElementById('applyOvertimeForm').addEventListener('submit', function(e) {
-    if (!confirm('Submit overtime application?')) {
-        e.preventDefault();
+// Check weekly OT limit
+async function checkWeeklyLimit(otDate) {
+    if (!otDate) {
+        document.getElementById('weeklyLimitWarning').classList.add('hidden');
+        return { valid: true };
+    }
+
+    try {
+        const response = await fetch('{{ route("staff.applyOt.checkLimit") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ ot_date: otDate })
+        });
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error checking weekly limit:', error);
+        return { valid: true }; // Allow submission if check fails
+    }
+}
+
+// Check limit when date changes
+document.getElementById('otDate').addEventListener('change', async function() {
+    const otDate = this.value;
+    if (!otDate) {
+        document.getElementById('weeklyLimitWarning').classList.add('hidden');
+        return;
+    }
+
+    const limitCheck = await checkWeeklyLimit(otDate);
+    const warningDiv = document.getElementById('weeklyLimitWarning');
+    const messageDiv = document.getElementById('weeklyLimitMessage');
+
+    if (!limitCheck.valid) {
+        warningDiv.classList.remove('hidden');
+        messageDiv.textContent = limitCheck.message;
+        warningDiv.className = 'p-4 mb-4 bg-red-50 border-l-4 border-red-400 rounded';
+    } else {
+        // Check if they have 1 application (warning)
+        const otDateObj = new Date(otDate);
+        const weekStart = new Date(otDateObj);
+        weekStart.setDate(otDateObj.getDate() - otDateObj.getDay() + 1); // Monday
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6); // Sunday
+        weekEnd.setHours(23, 59, 59, 999);
+
+        // This is just a visual warning, the actual check happens on submit
+        warningDiv.classList.add('hidden');
+    }
+});
+
+// Form submission: check limit before submitting
+document.getElementById('applyOvertimeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const otDate = document.getElementById('otDate').value;
+    if (!otDate) {
+        alert('Please select a date for the overtime application.');
         return false;
     }
-    // allow normal form submission so server stores the record and returns feedback
+
+    // Check weekly limit
+    const limitCheck = await checkWeeklyLimit(otDate);
+    
+    if (!limitCheck.valid) {
+        // Show popup alert
+        alert('⚠️ OT Application Limit Exceeded!\n\n' + limitCheck.message + '\n\nYou cannot submit more than 2 OT applications per week.');
+        return false;
+    }
+
+    // Confirm submission
+    if (!confirm('Submit overtime application?')) {
+        return false;
+    }
+
+    // Allow normal form submission
+    this.submit();
 });
 </script>
 

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Staff;
-use App\Models\Admin;
+// Admin model removed - admin table dropped
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +18,7 @@ class StaffController extends Controller
     {
         // Get all users with their staff/admin records, excluding seeded test users
         $excludedEmails = ['admin@gmail.com', 'staff@gmail.com'];
-        $users = User::with(['staff', 'admin'])
+        $users = User::with(['staff'])
             ->whereNotIn('email', $excludedEmails)
             ->orderBy('name')
             ->get();
@@ -34,9 +34,8 @@ class StaffController extends Controller
             $department = '';
             if ($user->staff) {
                 $department = $user->staff->department;
-            } elseif ($user->admin) {
-                $department = $user->admin->department;
             }
+            // Admin users don't have department (admin table removed)
             
             // Ensure all fields are properly formatted
             $csvData[] = [
@@ -82,9 +81,9 @@ class StaffController extends Controller
      */
     public function index()
     {
-        // Get all users with their staff/admin records, excluding seeded test users
+        // Get all users with their staff records, excluding seeded test users
         $excludedEmails = ['admin@gmail.com', 'staff@gmail.com'];
-        $allUsers = User::with(['staff', 'admin'])
+        $allUsers = User::with(['staff'])
             ->whereNotIn('email', $excludedEmails)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -122,7 +121,7 @@ class StaffController extends Controller
     public function show(User $user)
     {
         try {
-            $user->load(['staff', 'admin']);
+            $user->load(['staff']);
             
             return response()->json([
                 'success' => true,
@@ -171,6 +170,26 @@ class StaffController extends Controller
             
             // Update staff or admin record
             if ($validated['role'] === 'staff') {
+                $newDepartment = $validated['department'];
+                $oldDepartment = $user->staff?->department;
+                $newStatus = $validated['status'];
+                $oldStatus = $user->staff?->status;
+                
+                // Check department limit only if status is 'active' and:
+                // 1. Creating new staff record, OR
+                // 2. Changing department, OR
+                // 3. Activating inactive staff
+                if ($newStatus === 'active' && 
+                    (!$user->staff || $newDepartment !== $oldDepartment || $oldStatus === 'inactive')) {
+                    
+                    $excludeStaffId = $user->staff?->id;
+                    $limitCheck = Staff::checkDepartmentLimit($newDepartment, $excludeStaffId);
+                    
+                    if ($limitCheck['reached']) {
+                        throw new \Exception($limitCheck['message']);
+                    }
+                }
+                
                 if ($user->staff) {
                     $user->staff->update([
                         'employee_id' => $validated['employee_id'],
@@ -191,36 +210,14 @@ class StaffController extends Controller
                     ]);
                 }
                 
-                // Delete admin record if exists
-                if ($user->admin) {
-                    $user->admin->delete();
-                }
+                // Admin table removed - no admin record to delete
             } else {
-                // Admin role
-                if ($user->admin) {
-                    $user->admin->update([
-                        'employee_id' => $validated['employee_id'],
-                        'department' => $validated['department'],
-                        'status' => $validated['status'],
-                        'admin_level' => $validated['admin_level'] ?? 'admin',
-                        'appointment_date' => $validated['appointment_date'] ?? null,
-                    ]);
-                } else {
-                    // Create admin record if it doesn't exist
-                    Admin::create([
-                        'user_id' => $user->id,
-                        'employee_id' => $validated['employee_id'],
-                        'department' => $validated['department'],
-                        'status' => $validated['status'],
-                        'admin_level' => $validated['admin_level'] ?? 'admin',
-                        'appointment_date' => $validated['appointment_date'] ?? null,
-                    ]);
-                }
-                
-                // Delete staff record if exists
+                // Admin role - admin table removed, only update user role
+                // Delete staff record if exists (user switching from staff to admin)
                 if ($user->staff) {
                     $user->staff->delete();
                 }
+                // Admin users are identified by users.role = 'admin' only
             }
             
             DB::commit();
@@ -275,9 +272,7 @@ class StaffController extends Controller
             if ($user->staff) {
                 $user->staff->delete();
             }
-            if ($user->admin) {
-                $user->admin->delete();
-            }
+            // Admin table removed - admin users are identified by users.role only
 
             // Delete the user
             $user->delete();

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\Carbon;
 
 class Overtime extends Model
 {
@@ -129,13 +130,13 @@ class Overtime extends Model
 
         // Department limits for OT
         $limits = [
+            'manager' => 1,
+            'supervisor' => 1,
             'cashier' => 2,
             'barista' => 2,
             'joki' => 2,
-            'waiter' => 5,
-            'kitchen' => 4,
-            'manager' => 1,
-            'supervisor' => 1,
+            'waiter' => 3,
+            'kitchen' => 3,
         ];
 
         $max = $limits[$department] ?? 0;
@@ -149,7 +150,7 @@ class Overtime extends Model
         }
 
         // Check hours limit per person
-        $maxHours = in_array($department, ['manager', 'supervisor']) ? 2 : 4.5;
+        $maxHours = in_array($department, ['manager', 'supervisor']) ? 2 : 4;
         if ($overtime->hours > $maxHours) {
             return [
                 'valid' => false,
@@ -157,9 +158,63 @@ class Overtime extends Model
             ];
         }
 
+        // Check max OT applications per staff per week (2 times)
+        $weeklyLimitCheck = self::checkWeeklyLimit($overtime);
+        if (!$weeklyLimitCheck['valid']) {
+            return $weeklyLimitCheck;
+        }
+
         return [
             'valid' => true,
             'message' => 'OT request meets all department constraints'
+        ];
+    }
+
+    /**
+     * Check if staff has exceeded max OT applications per week (2 times)
+     * Returns array with validation status and messages
+     */
+    public static function checkWeeklyLimit($overtime)
+    {
+        $staff = $overtime->staff;
+        if (!$staff) {
+            return [
+                'valid' => false,
+                'message' => 'Staff record not found'
+            ];
+        }
+
+        $otDate = $overtime->ot_date instanceof Carbon 
+            ? $overtime->ot_date 
+            : Carbon::parse($overtime->ot_date);
+
+        // Get the week start (Monday) and end (Sunday)
+        $weekStart = $otDate->copy()->startOfWeek();
+        $weekEnd = $weekStart->copy()->endOfWeek();
+
+        // Count OT applications for this staff in this week (excluding current if updating)
+        $otCountThisWeek = self::where('staff_id', $staff->id)
+            ->whereBetween('ot_date', [$weekStart, $weekEnd])
+            ->where(function($q) use ($overtime) {
+                // Exclude current OT if it's an update
+                if ($overtime->id) {
+                    $q->where('id', '!=', $overtime->id);
+                }
+            })
+            ->count();
+
+        $maxPerWeek = 2;
+
+        if ($otCountThisWeek >= $maxPerWeek) {
+            return [
+                'valid' => false,
+                'message' => "You have already applied for {$otCountThisWeek} OT applications this week. Maximum allowed is {$maxPerWeek} per week."
+            ];
+        }
+
+        return [
+            'valid' => true,
+            'message' => 'Weekly OT limit check passed'
         ];
     }
 }

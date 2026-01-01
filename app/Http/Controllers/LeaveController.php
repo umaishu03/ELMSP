@@ -99,14 +99,21 @@ class LeaveController extends Controller
                 ];
             } elseif (isset($balances[$key])) {
                 $b = $balances[$key];
-                // For unpaid leave, ensure max is 10 (even if balance record has 0)
+                // For unpaid leave, calculate taken directly from Leave records (not from leave_balances)
                 if ($typeName === 'unpaid') {
                     $max = 10;
-                    $taken = (float)$b->used_days;
+                    $unpaidType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
+                    $taken = 0;
+                    if ($unpaidType) {
+                        $taken = Leave::where('staff_id', $staffId)
+                            ->where('leave_type_id', $unpaidType->id)
+                            ->where('status', 'approved')
+                            ->sum('total_days');
+                    }
                     $balance = max(0, $max - $taken);
                     $leaveBalance[$typeName] = [
                         'max' => $max,
-                        'taken' => $taken,
+                        'taken' => (float)$taken,
                         'balance' => $balance,
                     ];
                 } else {
@@ -213,14 +220,21 @@ class LeaveController extends Controller
                 ];
             } elseif (isset($balances[$key])) {
                 $b = $balances[$key];
-                // For unpaid leave, ensure max is 10 (even if balance record has 0)
+                // For unpaid leave, calculate taken directly from Leave records (not from leave_balances)
                 if ($typeName === 'unpaid') {
                     $max = 10;
-                    $taken = (float)$b->used_days;
+                    $unpaidType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
+                    $taken = 0;
+                    if ($unpaidType) {
+                        $taken = Leave::where('staff_id', $staffId)
+                            ->where('leave_type_id', $unpaidType->id)
+                            ->where('status', 'approved')
+                            ->sum('total_days');
+                    }
                     $balance = max(0, $max - $taken);
                     $leaveBalance[$typeName] = [
                         'max' => $max,
-                        'taken' => $taken,
+                        'taken' => (float)$taken,
                         'balance' => $balance,
                     ];
                 } else {

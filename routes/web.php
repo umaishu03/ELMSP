@@ -29,6 +29,12 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 
+// Password reset routes
+Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+Route::post('/forgot-password', [AuthController::class, 'sendPasswordResetLink'])->name('password.email');
+Route::get('/reset-password', [AuthController::class, 'showResetPassword'])->name('password.reset');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+
 // Protected Routes (only for authenticated users)
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -51,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/overtime-applyOt', [\App\Http\Controllers\OvertimeController::class, 'apply'])->name('applyOt');
     Route::get('/overtime-statusOt', [\App\Http\Controllers\OvertimeController::class, 'status'])->name('statusOt');
     Route::post('/overtime-applyOt', [\App\Http\Controllers\OvertimeController::class, 'store'])->name('applyOt.store');
+    Route::post('/overtime-check-limit', [\App\Http\Controllers\OvertimeController::class, 'checkWeeklyLimit'])->name('applyOt.checkLimit');
     Route::get('/overtime-claimOt', [\App\Http\Controllers\OvertimeController::class, 'claim'])->name('claimOt');
     Route::post('/overtime-claimOt', [\App\Http\Controllers\OvertimeController::class, 'claimStore'])->name('claimOt.store');
     // Staff-facing personal timetable (read-only view of assigned shifts)

@@ -31,15 +31,18 @@ $allPayrolls = OTClaim::query()->payroll()->pending()->orderBy('created_at','des
 
 // Pending replacement leave claims
 $pendingReplacementCount = OTClaim::query()->replacementLeave()->pending()->count();
-$pendingReplacements = OTClaim::query()->replacementLeave()->pending()->with('leave.staff.user')->orderBy('created_at','desc')->take(3)->get();
+$pendingReplacements = OTClaim::query()->replacementLeave()->pending()->with(['leave.staff.user', 'user'])->orderBy('created_at','desc')->take(3)->get();
 // Full replacement list for the expandable section
-$allReplacements = OTClaim::query()->replacementLeave()->pending()->with('leave.staff.user')->orderBy('created_at','desc')->get();
+$allReplacements = OTClaim::query()->replacementLeave()->pending()->with(['leave.staff.user', 'user'])->orderBy('created_at','desc')->get();
 ?><div class="mb-6">
     <h1 class="text-4xl font-extrabold text-blue-700">
         {{ $greeting }}, {{ $user->name }}!
     </h1>
     <p class="text-gray-600 mt-1">Welcome back to your Dashboard. Here are your latest updates.</p>
 </div>
+
+{{-- Toast Notification Container --}}
+<div id="toast-container" class="fixed top-20 right-4 z-[100] space-y-2" style="max-width: 400px;"></div>
 
 <!-- Small responsive tweak: force single-column cards when viewport is narrow (split view) -->
 <style>
@@ -213,10 +216,29 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->with('leave.
         <div class="p-3 md:p-4">
             <div class="space-y-2">
                 @forelse($pendingReplacements as $claim)
+                @php
+                    // Get user from overtime records for replacement leave claims
+                    $claimUser = null;
+                    if ($claim->ot_ids && is_array($claim->ot_ids) && !empty($claim->ot_ids)) {
+                        $firstOtId = $claim->ot_ids[0];
+                        $overtime = \App\Models\Overtime::with('staff.user')->find($firstOtId);
+                        if ($overtime && $overtime->staff && $overtime->staff->user) {
+                            $claimUser = $overtime->staff->user;
+                        }
+                    }
+                    // Fallback: try to get from leave if it exists
+                    if (!$claimUser && $claim->leave) {
+                        $claimUser = $claim->leave->staff->user ?? null;
+                    }
+                    // Final fallback: try direct user relationship
+                    if (!$claimUser && $claim->user) {
+                        $claimUser = $claim->user;
+                    }
+                @endphp
                 <div class="flex items-center space-x-2 p-2 bg-purple-50 rounded hover:bg-purple-100 transition cursor-pointer text-xs md:text-sm">
                     <div class="w-1.5 h-1.5 bg-purple-500 rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-gray-800 truncate">{{ $claim->leave->staff->user->name ?? 'Unknown' }} - {{ intval($claim->replacement_days) }} day{{ intval($claim->replacement_days) > 1 ? 's' : '' }}</p>
+                        <p class="font-semibold text-gray-800 truncate">{{ $claimUser->name ?? 'Unknown' }} - {{ intval($claim->replacement_days) }} day{{ intval($claim->replacement_days) > 1 ? 's' : '' }}</p>
                         <p class="text-xs text-gray-500">{{ $claim->created_at->diffForHumans() }}</p>
                     </div>
                 </div>
@@ -459,17 +481,37 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->with('leave.
                 <div class="p-6 text-gray-600">No replacement leave claims available.</div>
             @else
                 @foreach($allReplacements as $claim)
+                @php
+                    // Get user from overtime records for replacement leave claims
+                    // Replacement leave claims don't have leave_id initially, so get user from OT records
+                    $claimUser = null;
+                    if ($claim->ot_ids && is_array($claim->ot_ids) && !empty($claim->ot_ids)) {
+                        $firstOtId = $claim->ot_ids[0];
+                        $overtime = \App\Models\Overtime::with('staff.user')->find($firstOtId);
+                        if ($overtime && $overtime->staff && $overtime->staff->user) {
+                            $claimUser = $overtime->staff->user;
+                        }
+                    }
+                    // Fallback: try to get from leave if it exists
+                    if (!$claimUser && $claim->leave) {
+                        $claimUser = $claim->leave->staff->user ?? null;
+                    }
+                    // Final fallback: try direct user relationship
+                    if (!$claimUser && $claim->user) {
+                        $claimUser = $claim->user;
+                    }
+                @endphp
                 <div class="p-6 {{ $claim->status === 'pending' ? 'bg-purple-50 hover:bg-purple-100' : 'hover:bg-gray-50' }} transition cursor-pointer border-l-4 {{ $claim->status === 'pending' ? 'border-purple-500' : 'border-transparent' }}">
                     <div class="flex items-start justify-between">
                         <div class="flex items-start space-x-4 flex-1">
                             <div class="flex-shrink-0">
                                 <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                    {{ strtoupper(substr($claim->user->name ?? 'U', 0, 2)) }}
+                                    {{ strtoupper(substr($claimUser->name ?? 'U', 0, 2)) }}
                                 </div>
                             </div>
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
-                                    <h3 class="font-bold text-gray-900">{{ $claim->user->name ?? 'Unknown' }}</h3>
+                                    <h3 class="font-bold text-gray-900">{{ $claimUser->name ?? 'Unknown' }}</h3>
                                     <span class="{{ $claim->status === 'pending' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
                                 </div>
                                 <p class="text-sm text-gray-600 mb-2">Replacement Leave Claim - {{ $claim->created_at->format('F Y') }}</p>
@@ -608,5 +650,76 @@ function showAllSections() {
         }
     }, 100);
 }
+
+// Toast Notification System
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+    const iconColor = type === 'success' ? 'text-green-500' : 'text-red-500';
+    const icon = type === 'success' 
+        ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+        : '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+    
+    // Check if message starts with "Welcome" to show a simpler format
+    const isWelcomeMessage = message.toLowerCase().startsWith('welcome');
+    
+    toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in-right transform transition-all duration-300`;
+    toast.innerHTML = `
+        <div class="flex-shrink-0 ${iconColor} bg-white rounded-full p-1">
+            ${icon}
+        </div>
+        <div class="flex-1">
+            ${isWelcomeMessage ? '' : `<p class="font-semibold text-sm">${type === 'success' ? 'Success!' : 'Error!'}</p>`}
+            <p class="text-sm ${isWelcomeMessage ? 'font-semibold' : 'opacity-90'}">${message}</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="flex-shrink-0 hover:opacity-75 transition">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Check for flash messages on page load
+document.addEventListener('DOMContentLoaded', function() {
+    @if(session('success'))
+        showToast('{{ session('success') }}', 'success');
+    @endif
+    
+    @if(session('error'))
+        showToast('{{ session('error') }}', 'error');
+    @endif
+});
+
+// Add CSS animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slide-in-right {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    .animate-slide-in-right {
+        animation: slide-in-right 0.3s ease-out;
+    }
+`;
+document.head.appendChild(style);
 </script>
 @endsection

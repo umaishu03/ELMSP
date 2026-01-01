@@ -70,8 +70,8 @@
                         <div class="font-medium">{{ Auth::user()->name }}</div>
                         <div class="text-gray-500">{{ Auth::user()->email }}</div>
                     </div>
-                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        <i class="fas fa-cog mr-2"></i>Settings
+                    <a href="{{ route('profile.show') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fas fa-user mr-2"></i>Profile
                     </a>
                     <div class="border-t">
                         <form method="POST" action="{{ route('logout') }}">
@@ -163,14 +163,6 @@
                             </li>
                         </ul>
                     </li>
-                    <li>
-                        <a href="#" class="nav-item flex items-center justify-between px-4 py-3 text-white rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-chart-bar mr-3"></i>
-                                <span>Leave Report</span>
-                            </div>
-                        </a>
-                    </li>
                     
                 </ul>
             </nav>
@@ -178,13 +170,6 @@
 
         <!-- Main Content -->
         <main class="flex-1 p-8">
-
-            @if(session('error'))
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                    {{ session('error') }}
-                </div>
-            @endif
-
             <div id="mainContent" class="mt-20 ml-64 transition-all duration-300">
                 @yield('content')
             </div>

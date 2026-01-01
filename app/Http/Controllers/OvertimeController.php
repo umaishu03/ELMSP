@@ -32,14 +32,23 @@ class OvertimeController extends Controller
             return back()->with('error', 'Staff record not found for user');
         }
 
-        $overtime = Overtime::create([
+        // Create temporary OT instance for validation
+        $overtime = new Overtime([
             'staff_id' => $staff->id,
             'ot_type' => $request->ot_type,
             'ot_date' => $request->ot_date,
             'hours' => $request->hours,
             'remarks' => $request->ot_reason,
-            // status set to pending in model boot
         ]);
+
+        // Check weekly limit before creating
+        $weeklyLimitCheck = Overtime::checkWeeklyLimit($overtime);
+        if (!$weeklyLimitCheck['valid']) {
+            return back()->with('error', $weeklyLimitCheck['message'])->withInput();
+        }
+
+        // Create the OT record
+        $overtime->save();
 
         return redirect()->route('staff.statusOt')->with('success', 'Overtime application submitted and awaits admin approval.');
     }
@@ -85,6 +94,7 @@ class OvertimeController extends Controller
         $replacement_days = floor(($fulltime_hours + $public_holiday_hours) / 8);
 
         $claim = OTClaim::create([
+            'user_id' => $user->id,
             'claim_type' => $request->claim_type,
             'ot_ids' => $otIds,
             'fulltime_hours' => $fulltime_hours,
@@ -112,6 +122,35 @@ class OvertimeController extends Controller
         }
 
         return view('staff.overtime.statusOt', compact('overtimes'));
+    }
+
+    /**
+     * Check weekly OT limit for the selected date
+     */
+    public function checkWeeklyLimit(Request $request)
+    {
+        $request->validate([
+            'ot_date' => 'required|date',
+        ]);
+
+        $user = Auth::user();
+        $staff = $user->staff;
+        if (!$staff) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Staff record not found'
+            ], 400);
+        }
+
+        // Create temporary OT instance for validation
+        $overtime = new Overtime([
+            'staff_id' => $staff->id,
+            'ot_date' => $request->ot_date,
+        ]);
+
+        $weeklyLimitCheck = Overtime::checkWeeklyLimit($overtime);
+        
+        return response()->json($weeklyLimitCheck);
     }
         
 }

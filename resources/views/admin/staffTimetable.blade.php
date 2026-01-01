@@ -9,6 +9,9 @@
 <div class="mb-8">
     <h1 class="text-4xl font-bold text-gray-800 mb-2">Staff Timetable</h1>
 </div>
+
+{{-- Toast Notification Container --}}
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2" style="max-width: 400px;"></div>
 <div class="flex flex-col lg:flex-row gap-8">
     <div class="flex-1">
         <div class="flex items-center justify-between p-2 border border-gray-300 rounded-lg shadow-sm bg-white mb-4">
@@ -469,7 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         matches.forEach(u => {
             const opt = document.createElement('option');
             opt.value = u.id;
-            opt.textContent = u.name + ' <' + u.email + '>';
+            opt.textContent = u.name;
             assignUsersSelect.appendChild(opt);
         });
 
@@ -1613,5 +1616,73 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // (Old simple assign handler removed — AJAX handler runs earlier and reports status)
 });
+
+// Toast Notification System
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+    const iconColor = type === 'success' ? 'text-green-500' : 'text-red-500';
+    const icon = type === 'success' 
+        ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>'
+        : '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
+    
+    toast.className = `${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in-right transform transition-all duration-300`;
+    toast.innerHTML = `
+        <div class="flex-shrink-0 ${iconColor} bg-white rounded-full p-1">
+            ${icon}
+        </div>
+        <div class="flex-1">
+            <p class="font-semibold text-sm">${type === 'success' ? 'Success!' : 'Error!'}</p>
+            <p class="text-sm opacity-90">${message}</p>
+        </div>
+        <button onclick="this.parentElement.remove()" class="flex-shrink-0 hover:opacity-75 transition">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+            </svg>
+        </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Check for flash messages on page load
+document.addEventListener('DOMContentLoaded', function() {
+    @if(session('success'))
+        showToast('{{ session('success') }}', 'success');
+    @endif
+    
+    @if(session('error'))
+        showToast('{{ session('error') }}', 'error');
+    @endif
+});
+
+// Add CSS animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slide-in-right {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    .animate-slide-in-right {
+        animation: slide-in-right 0.3s ease-out;
+    }
+`;
+document.head.appendChild(style);
 </script>
 @endsection
