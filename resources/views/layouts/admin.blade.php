@@ -9,6 +9,7 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .gradient-header {
@@ -266,5 +267,328 @@
     </script>
 
     @yield('scripts')
+    
+    <!-- Chatbot Widget -->
+    <div id="chatbot-widget" style="position: fixed; bottom: 20px; right: 20px; z-index: 1050;">
+        <!-- Chatbot Button -->
+        <button id="chatbot-toggle" class="btn btn-primary rounded-circle shadow-lg position-relative" style="width: 60px; height: 60px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border: none; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);">
+            <i class="fas fa-comments fs-4"></i>
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;" id="chatbot-notification">
+                0
+            </span>
+        </button>
+        
+        <!-- Chatbot Window -->
+        <div id="chatbot-window" class="card shadow-lg border-0" style="display: none; position: fixed; bottom: 100px; right: 20px; width: 380px; max-height: calc(100vh - 180px); height: 600px; z-index: 1050; animation: slideUp 0.3s ease-out;">
+            <!-- Chatbot Header -->
+            <div class="card-header text-white border-0" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border-radius: 0.375rem 0.375rem 0 0 !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px;">
+                            <i class="fas fa-robot text-primary fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold">ELMSP Assistant</h5>
+                            <small class="opacity-75">
+                                <span class="badge bg-success bg-opacity-50">
+                                    <i class="fas fa-circle me-1" style="font-size: 6px; vertical-align: middle;"></i>
+                                    Online
+                                </span>
+                            </small>
+                        </div>
+                    </div>
+                    <button id="chatbot-close" class="btn btn-link text-white p-0" style="text-decoration: none; opacity: 0.8; transition: opacity 0.2s;">
+                        <i class="fas fa-times fs-5"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Chat Messages -->
+            <div id="chatbot-messages" class="card-body p-3" style="overflow-y: auto; height: calc(100% - 120px); min-height: 400px; max-height: 500px; background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);">
+                <div class="d-flex align-items-start gap-2 mb-3 animate-message">
+                    <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 35px; height: 35px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%) !important;">
+                        <i class="fas fa-robot text-white" style="font-size: 0.875rem;"></i>
+                    </div>
+                    <div class="bg-white rounded-3 p-3 shadow-sm" style="max-width: 80%; border-left: 3px solid #0d6efd;">
+                        <p class="mb-0 small text-dark" style="line-height: 1.5;">Hello! I'm your ELMSP assistant. I can help you manage staff, review pending requests (leave, overtime, payroll), view staff schedules, and handle payroll management. How can I assist you today?</p>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">Just now</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="card-footer bg-white border-top">
+                <form id="chatbot-form" class="d-flex gap-2">
+                    <input type="text" id="chatbot-input" placeholder="Type your message..." class="form-control form-control-sm" autocomplete="off" style="border-radius: 20px; border: 1px solid #dee2e6; transition: all 0.3s;">
+                    <button type="submit" class="btn btn-primary btn-sm rounded-circle" style="width: 38px; height: 38px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); border: none; transition: transform 0.2s;">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .animate-message {
+            animation: messageSlide 0.3s ease-out;
+        }
+        
+        #chatbot-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(13, 110, 253, 0.6) !important;
+        }
+        
+        #chatbot-close:hover {
+            opacity: 1 !important;
+            transform: rotate(90deg);
+        }
+        
+        #chatbot-input:focus {
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+        }
+        
+        #chatbot-form button:hover {
+            transform: scale(1.1);
+        }
+        
+        #chatbot-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #chatbot-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        #chatbot-messages::-webkit-scrollbar-thumb {
+            background: #0d6efd;
+            border-radius: 10px;
+        }
+        
+        #chatbot-messages::-webkit-scrollbar-thumb:hover {
+            background: #0a58ca;
+        }
+    </style>
+    
+    <!-- Chatbot Scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatbotToggle = document.getElementById('chatbot-toggle');
+            const chatbotWindow = document.getElementById('chatbot-window');
+            const chatbotClose = document.getElementById('chatbot-close');
+            const chatbotForm = document.getElementById('chatbot-form');
+            const chatbotInput = document.getElementById('chatbot-input');
+            const chatbotMessages = document.getElementById('chatbot-messages');
+            
+            // Toggle chatbot window
+            chatbotToggle.addEventListener('click', function() {
+                const isHidden = chatbotWindow.style.display === 'none';
+                chatbotWindow.style.display = isHidden ? 'block' : 'none';
+                if (isHidden) {
+                    chatbotInput.focus();
+                }
+            });
+            
+            // Close chatbot window
+            chatbotClose.addEventListener('click', function() {
+                chatbotWindow.style.display = 'none';
+            });
+            
+            // Handle form submission
+            chatbotForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const message = chatbotInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage(message, 'user');
+                chatbotInput.value = '';
+                
+                // Send message to backend
+                sendMessage(message);
+            });
+            
+            // Add message to chat
+            function addMessage(text, type) {
+                if (!text) {
+                    console.error('addMessage called with empty text');
+                    return;
+                }
+                
+                try {
+                    const messageDiv = document.createElement('div');
+                    const isUser = type === 'user';
+                    messageDiv.className = `d-flex align-items-start gap-2 mb-3 animate-message ${isUser ? 'flex-row-reverse' : ''}`;
+                    
+                    const now = new Date();
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    
+                    if (isUser) {
+                        messageDiv.innerHTML = `
+                            <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 35px; height: 35px;">
+                                <i class="fas fa-user text-white" style="font-size: 0.75rem;"></i>
+                            </div>
+                            <div class="bg-primary text-white rounded-3 p-3 shadow-sm" style="max-width: 80%; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%) !important; border-right: 3px solid #0a58ca;">
+                                <p class="mb-0 small" style="white-space: pre-wrap; line-height: 1.5;">${escapeHtml(text)}</p>
+                                <small class="d-block mt-1 opacity-75" style="font-size: 0.7rem;">${timeStr}</small>
+                            </div>
+                        `;
+                    } else {
+                        const iconClass = type === 'error' ? 'fa-exclamation-circle text-danger' : 
+                                        type === 'success' ? 'fa-check-circle text-success' : 
+                                        'fa-robot';
+                        const iconColor = type === 'error' ? '#dc3545' : type === 'success' ? '#198754' : '#0d6efd';
+                        messageDiv.innerHTML = `
+                            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 35px; height: 35px; background: linear-gradient(135deg, ${iconColor} 0%, ${iconColor}dd 100%);">
+                                <i class="fas ${iconClass === 'fa-robot' || iconClass.includes('fa-robot') ? 'fa-robot' : 'fa-info-circle'} text-white" style="font-size: 0.875rem;"></i>
+                            </div>
+                            <div class="bg-white rounded-3 p-3 shadow-sm" style="max-width: 80%; border-left: 3px solid ${iconColor};">
+                                <p class="mb-0 small text-dark" style="white-space: pre-wrap; line-height: 1.5;">${formatMessage(text)}</p>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">${timeStr}</small>
+                            </div>
+                        `;
+                    }
+                    
+                    chatbotMessages.appendChild(messageDiv);
+                    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                } catch (error) {
+                    console.error('Error adding message to chat:', error);
+                    // Fallback: try to add a simple text message
+                    const fallbackDiv = document.createElement('div');
+                    fallbackDiv.className = 'd-flex align-items-start gap-2 mb-3';
+                    fallbackDiv.innerHTML = `
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+                            <i class="fas fa-robot text-white" style="font-size: 0.875rem;"></i>
+                        </div>
+                        <div class="bg-white rounded-3 p-3 shadow-sm" style="max-width: 80%;">
+                            <p class="mb-0 small text-dark">${escapeHtml(String(text))}</p>
+                        </div>
+                    `;
+                    chatbotMessages.appendChild(fallbackDiv);
+                    chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                }
+            }
+            
+            // Send message to backend
+            function sendMessage(message) {
+                const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                if (!csrfTokenMeta) {
+                    console.error('CSRF token meta tag not found!');
+                    addMessage('Error: CSRF token not found. Please refresh the page.', 'error');
+                    return;
+                }
+                
+                const csrfToken = csrfTokenMeta.getAttribute('content');
+                if (!csrfToken) {
+                    console.error('CSRF token is empty!');
+                    addMessage('Error: CSRF token is empty. Please refresh the page.', 'error');
+                    return;
+                }
+                
+                // Show loading indicator
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = 'chatbot-loading';
+                loadingDiv.className = 'd-flex align-items-start gap-2 mb-3';
+                loadingDiv.innerHTML = `
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 35px; height: 35px; background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);">
+                        <i class="fas fa-robot text-white" style="font-size: 0.875rem;"></i>
+                    </div>
+                    <div class="bg-white rounded-3 p-3 shadow-sm" style="max-width: 80%; border-left: 3px solid #0d6efd;">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status" style="width: 1rem; height: 1rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <small class="text-muted">Thinking...</small>
+                        </div>
+                    </div>
+                `;
+                chatbotMessages.appendChild(loadingDiv);
+                chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+                
+                fetch('{{ route("chatbot.message") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.message || `HTTP error! status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Remove loading indicator
+                    const loading = document.getElementById('chatbot-loading');
+                    if (loading) loading.remove();
+                    
+                    console.log('Chatbot Response:', data); // Debug log
+                    
+                    if (data.success) {
+                        addMessage(data.response, data.type || 'info');
+                    } else {
+                        addMessage(data.response || 'Sorry, I encountered an error. Please try again.', 'error');
+                    }
+                })
+                .catch(error => {
+                    // Remove loading indicator
+                    const loading = document.getElementById('chatbot-loading');
+                    if (loading) loading.remove();
+                    
+                    console.error('Chatbot Error:', error);
+                    console.error('Error details:', error.message, error.stack);
+                    addMessage('Sorry, I encountered an error. Please try again or check your connection.', 'error');
+                });
+            }
+            
+            // Escape HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            // Format message (convert markdown-like formatting)
+            function formatMessage(text) {
+                // First escape HTML to prevent XSS
+                text = escapeHtml(text);
+                // Convert **text** to bold
+                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                // Convert line breaks
+                text = text.replace(/\n/g, '<br>');
+                return text;
+            }
+        });
+    </script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
