@@ -129,14 +129,14 @@ if ($staffId) {
 
     <!-- Overtime Request Approved Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
             <div class="flex items-center space-x-2">
                 <svg class="w-4 md:w-5 h-4 md:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h2 class="text-sm md:text-lg font-bold text-white">Overtime Approved</h2>
             </div>
-            <span class="bg-white text-green-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
+            <span class="bg-white text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
                  {{ $approvedCount }}
             </span>
         </div>
@@ -157,7 +157,7 @@ if ($staffId) {
                 <div class="text-xs text-gray-600">No approved overtime yet</div>
                 @endforelse
                 <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button onclick="showOvertimeApprovedSection()" class="block w-full text-center text-xs font-semibold text-green-600 hover:text-green-700 transition">
+                    <button onclick="showOvertimeApprovedSection()" class="block w-full text-center text-xs font-semibold text-orange-600 hover:text-orange-700 transition">
                         View Status →
                     </button>
                 </div>
@@ -167,14 +167,14 @@ if ($staffId) {
 
     <!-- Salary Claims Status Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
             <div class="flex items-center space-x-2">
                 <svg class="w-4 md:w-5 h-4 md:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h2 class="text-sm md:text-lg font-bold text-white">Salary Claims</h2>
             </div>
-            <span class="bg-white text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
+            <span class="bg-white text-green-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
                 {{ $salaryClaims->count() }}
             </span>
         </div>
@@ -186,8 +186,8 @@ if ($staffId) {
                     $totalPay = $amounts['total_pay'] ?? 0;
                     $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
                 @endphp
-                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : 'bg-orange-50' }} rounded hover:{{ $isApproved ? 'bg-green-100' : 'bg-orange-100' }} transition cursor-pointer text-xs md:text-sm">
-                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : 'bg-orange-500' }} rounded-full flex-shrink-0"></div>
+                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : 'bg-green-50' }} rounded hover:bg-green-100 transition cursor-pointer text-xs md:text-sm">
+                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <p class="font-semibold text-gray-800 truncate">{{ $claim->created_at->format('F Y') }} - RM {{ number_format($totalPay, 2) }}</p>
@@ -203,7 +203,7 @@ if ($staffId) {
                 @endforelse
                 <div class="h-3"></div>
                 <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button onclick="showSalaryClaimsSection()" class="block w-full text-center text-xs font-semibold text-orange-600 hover:text-orange-700 transition">
+                    <button onclick="showSalaryClaimsSection()" class="block w-full text-center text-xs font-semibold text-green-600 hover:text-green-700 transition">
                         View Details →
                     </button>
                 </div>
@@ -267,14 +267,14 @@ if ($staffId) {
 <!-- Approved Overtime Section (Hidden by default) -->
 <div class="mt-8 hidden" id="overtime-approved-section">
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" class="px-6 py-4 flex justify-between items-center">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h2 class="text-xl font-bold text-white">Approved Overtime Requests</h2>
             </div>
-            <button onclick="hideOvertimeApprovedSection()" class="text-white hover:text-green-100 transition">
+            <button onclick="hideOvertimeApprovedSection()" class="text-white hover:text-orange-100 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -317,14 +317,14 @@ if ($staffId) {
 <!-- Salary Claims Section (Hidden by default) -->
 <div class="mt-8 hidden" id="salary-claims-section">
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-6 py-4 flex justify-between items-center">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" class="px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h2 class="text-xl font-bold text-white">Overtime Salary Claims Status</h2>
             </div>
-            <button onclick="hideSalaryClaimsSection()" class="text-white hover:text-orange-100 transition">
+            <button onclick="hideSalaryClaimsSection()" class="text-white hover:text-green-100 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -335,8 +335,8 @@ if ($staffId) {
             @forelse($salaryClaims as $claim)
             @php
                 $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
-                $bgColor = $isApproved ? 'bg-green-50' : 'bg-yellow-50';
-                $borderColor = $isApproved ? 'border-green-500' : 'border-yellow-500';
+                $bgColor = $isApproved ? 'bg-green-50' : 'bg-green-50';
+                $borderColor = $isApproved ? 'border-green-500' : 'border-green-300';
             @endphp
             <div class="p-6 {{ $bgColor }} border-l-4 {{ $borderColor }}">
                 <div class="flex items-start justify-between">
@@ -345,7 +345,7 @@ if ($staffId) {
                             @php
                                 $status = strtolower($claim->status ?? 'pending');
                                 $statusLabel = $status === 'approved' ? '✓ Approved' : ($status === 'pending' ? 'Pending Review' : ucfirst($status));
-                                $statusClass = $status === 'approved' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
+                                $statusClass = $status === 'approved' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
                                 $payrollAmounts = $claim->calculatePayrollAmounts();
                                 $totalHours = ($payrollAmounts['fulltime_hours'] ?? 0) + ($payrollAmounts['public_holiday_hours'] ?? 0);
                                 $totalPay = $payrollAmounts['total_pay'] ?? 0;
@@ -375,7 +375,7 @@ if ($staffId) {
                             </div>
                             <div>
                                 <p class="text-sm text-gray-600">Total Amount:</p>
-                                <p class="text-lg font-bold text-{{ $status === 'approved' ? 'green' : ($status === 'pending' ? 'yellow' : 'red') }}-600">RM {{ number_format($totalPay, 2) }}</p>
+                                <p class="text-lg font-bold text-{{ $status === 'approved' ? 'green' : ($status === 'pending' ? 'green' : 'red') }}-600">RM {{ number_format($totalPay, 2) }}</p>
                             </div>
                         </div>
                         <div class="bg-white p-3 rounded border border-gray-200 text-sm">

@@ -1,7 +1,6 @@
 @extends('layouts.admin')
 @section('title', 'Staff Timetable')
 @section('content')
-@section('content')
 <!-- Breadcrumbs -->
 <div class="mb-6">
     {!! \App\Helpers\BreadcrumbHelper::render() !!}

@@ -274,8 +274,12 @@ class LeaveController extends Controller
         ]);
 
         // Calculate total days
-        $startDate = Carbon::parse($validated['start_date']);
-        $endDate = Carbon::parse($validated['end_date']);
+        // Normalize both dates to start of day to avoid time component issues
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $endDate = Carbon::parse($validated['end_date'])->startOfDay();
+        // diffInDays returns the number of days between dates (exclusive)
+        // For same date: diffInDays = 0, +1 = 1 day (correct)
+        // For consecutive dates: diffInDays = 1, +1 = 2 days (correct)
         $totalDays = $endDate->diffInDays($startDate) + 1;
 
         // Get OT hours for replacement leave

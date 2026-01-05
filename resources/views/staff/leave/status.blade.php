@@ -3,7 +3,7 @@
 @section('content')
 <!-- Success Toast Message -->
 @if($message = Session::get('success'))
-<div id="successToast" class="fixed top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto bg-green-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 z-50 animate-fade-in-down max-w-md sm:max-w-lg">
+<div id="successToast" class="fixed top-0 left-0 right-0 sm:top-4 sm:left-auto sm:right-6 bg-green-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-none sm:rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 z-[9999] animate-fade-in-down max-w-full sm:max-w-lg">
     <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
         <i class="fas fa-check-circle text-lg sm:text-xl flex-shrink-0"></i>
         <div class="min-w-0 flex-1">

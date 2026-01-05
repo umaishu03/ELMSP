@@ -20,7 +20,6 @@ class AdminSeeder extends Seeder
             'email' => 'admin@gmail.com',
             'password' => Hash::make('123456789'),
             'role' => 'admin',
-            'employee_id' => null, // Admin doesn't need employee ID
         ]);
 
         $this->command->info('Admin user created successfully!');

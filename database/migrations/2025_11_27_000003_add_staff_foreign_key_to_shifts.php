@@ -12,16 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // First, delete any shifts that reference non-existent staff records
+        // Clean up any shifts that reference non-existent staff records
+        // This migration is primarily for data cleanup.
+        // The foreign key constraint is already added by migration 2025_11_27_000002
         DB::statement('
             DELETE FROM shifts 
             WHERE staff_id NOT IN (SELECT id FROM staff)
         ');
-
-        Schema::table('shifts', function (Blueprint $table) {
-            // Add the foreign key constraint to staff table
-            $table->foreign('staff_id')->references('id')->on('staff')->onDelete('cascade');
-        });
     }
 
     /**
@@ -29,8 +26,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('shifts', function (Blueprint $table) {
-            $table->dropForeign(['staff_id']);
-        });
+        // This migration only cleans up data, so there's nothing to reverse
+        // The foreign key constraint is managed by migration 2025_11_27_000002
     }
 };

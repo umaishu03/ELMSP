@@ -10,32 +10,38 @@
             box-sizing: border-box;
         }
         
+        html {
+            height: auto;
+        }
+        
         body {
             font-family: 'Arial', 'Helvetica', sans-serif;
             color: #1f2937;
-            line-height: 1.6;
+            line-height: 1.4;
             background: #ffffff;
+            height: auto;
+            overflow: visible;
         }
         
         .payslip-container {
             max-width: 210mm;
             margin: 0 auto;
-            padding: 20mm;
+            padding: 10mm;
             background: #ffffff;
         }
         
         /* Header Section */
         .header {
-            border-bottom: 4px solid #2563eb;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
         }
         
         .header-top {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         
         .company-info {
@@ -43,14 +49,14 @@
         }
         
         .company-name {
-            font-size: 28px;
+            font-size: 20px;
             font-weight: bold;
             color: #1e40af;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
         
         .company-tagline {
-            font-size: 12px;
+            font-size: 10px;
             color: #6b7280;
         }
         
@@ -59,28 +65,28 @@
         }
         
         .payslip-title h1 {
-            font-size: 36px;
+            font-size: 24px;
             font-weight: bold;
             color: #1f2937;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
         
         .payslip-period {
-            font-size: 14px;
+            font-size: 11px;
             color: #6b7280;
         }
         
         .header-details {
             display: flex;
             justify-content: space-between;
-            margin-top: 15px;
-            font-size: 12px;
+            margin-top: 8px;
+            font-size: 10px;
             color: #4b5563;
         }
         
         /* Employee Information Section */
         .info-section {
-            margin-bottom: 25px;
+            margin-bottom: 12px;
         }
         
         .info-grid {
@@ -96,7 +102,7 @@
         .info-col {
             display: table-cell;
             width: 50%;
-            padding: 15px;
+            padding: 10px;
             vertical-align: top;
             border: 1px solid #e5e7eb;
         }
@@ -106,19 +112,19 @@
         }
         
         .section-title {
-            font-size: 11px;
+            font-size: 9px;
             font-weight: bold;
             color: #374151;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
             border-bottom: 2px solid #2563eb;
         }
         
         .info-item {
-            margin-bottom: 8px;
-            font-size: 13px;
+            margin-bottom: 5px;
+            font-size: 11px;
         }
         
         .info-label {
@@ -134,29 +140,29 @@
         
         /* Earnings Section */
         .earnings-section {
-            margin-bottom: 25px;
+            margin-bottom: 12px;
         }
         
         .section-header {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: bold;
             color: #1f2937;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #2563eb;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #2563eb;
         }
         
         .earnings-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
         
         .earnings-table th {
             background: #f3f4f6;
-            padding: 12px;
+            padding: 8px;
             text-align: left;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
             color: #374151;
             text-transform: uppercase;
@@ -164,9 +170,9 @@
         }
         
         .earnings-table td {
-            padding: 12px;
+            padding: 8px;
             border: 1px solid #e5e7eb;
-            font-size: 13px;
+            font-size: 11px;
         }
         
         .earnings-table tr:nth-child(even) {
@@ -191,13 +197,13 @@
         
         .earnings-table .total-row td {
             border-top: 2px solid #2563eb;
-            padding-top: 15px;
-            padding-bottom: 15px;
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
         
         /* Overtime Details */
         .overtime-section {
-            margin-bottom: 25px;
+            margin-bottom: 12px;
         }
         
         .overtime-grid {
@@ -209,7 +215,7 @@
         .overtime-item {
             display: table-cell;
             width: 33.33%;
-            padding: 20px;
+            padding: 12px;
             text-align: center;
             border: 1px solid #e5e7eb;
             background: #f9fafb;
@@ -220,31 +226,32 @@
         }
         
         .overtime-label {
-            font-size: 11px;
+            font-size: 9px;
             color: #6b7280;
             text-transform: uppercase;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         
         .overtime-hours {
-            font-size: 32px;
+            font-size: 20px;
             font-weight: bold;
             color: #1e40af;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
         
         .overtime-rate {
-            font-size: 11px;
+            font-size: 9px;
             color: #6b7280;
         }
         
         /* Summary Section */
         .summary-section {
-            background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+            background: #1e40af;
+            background-image: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
             color: #ffffff;
-            padding: 25px;
-            margin-bottom: 25px;
-            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 6px;
         }
         
         .summary-grid {
@@ -264,25 +271,25 @@
         }
         
         .summary-label {
-            font-size: 11px;
+            font-size: 9px;
             opacity: 0.9;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .summary-amount {
-            font-size: 24px;
+            font-size: 16px;
             font-weight: bold;
         }
         
         .summary-net {
-            font-size: 32px;
+            font-size: 20px;
         }
         
         /* Payment Details */
         .payment-section {
-            margin-bottom: 25px;
+            margin-bottom: 12px;
         }
         
         .payment-grid {
@@ -294,7 +301,7 @@
         .payment-col {
             display: table-cell;
             width: 50%;
-            padding: 15px;
+            padding: 10px;
             vertical-align: top;
             border: 1px solid #e5e7eb;
         }
@@ -330,16 +337,16 @@
         
         /* Footer */
         .footer {
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 12px;
+            padding-top: 10px;
             border-top: 2px solid #e5e7eb;
             text-align: center;
-            font-size: 10px;
+            font-size: 8px;
             color: #6b7280;
         }
         
         .footer p {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
         
         /* Print Styles */
@@ -350,6 +357,11 @@
                 color-adjust: exact !important;
             }
             
+            @page {
+                size: A4;
+                margin: 5mm;
+            }
+            
             body {
                 margin: 0;
                 padding: 0;
@@ -357,10 +369,12 @@
             }
             
             .payslip-container {
-                padding: 10mm;
+                padding: 5mm;
                 margin: 0;
                 max-width: 100%;
                 box-shadow: none;
+                height: 100%;
+                overflow: hidden;
             }
             
             .summary-section {
@@ -405,6 +419,41 @@
             .header,
             .summary-section {
                 page-break-inside: avoid;
+            }
+            
+            /* Prevent page breaks and ensure single page */
+            .payslip-container > * {
+                page-break-inside: avoid;
+            }
+            
+            /* Reduce line height for compact display */
+            body {
+                line-height: 1.3;
+            }
+            
+            /* Compact spacing */
+            .info-item,
+            .earnings-table td,
+            .earnings-table th {
+                padding: 6px 8px;
+            }
+            
+            /* Ensure summary section is visible */
+            .summary-section {
+                display: block !important;
+                visibility: visible !important;
+                background: #1e40af !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .summary-grid {
+                display: table !important;
+                width: 100% !important;
+            }
+            
+            .summary-item {
+                display: table-cell !important;
             }
         }
     </style>

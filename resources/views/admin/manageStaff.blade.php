@@ -16,7 +16,8 @@
     <!-- Search Bar -->
     <div class="relative flex-1 max-w-md">
         <input type="text" 
-               placeholder="Search" 
+               id="staffSearchInput"
+               placeholder="Search by name, email, ID, department, or role..." 
                class="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
             <i class="fas fa-search text-gray-400"></i>
@@ -113,7 +114,12 @@
             <!-- Table Body -->
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($users as $index => $user)
-                <tr class="hover:bg-gray-50 {{ $index >= 5 ? 'hidden staff-row-all' : '' }}">
+                <tr class="hover:bg-gray-50 staff-row {{ $index >= 5 ? 'hidden staff-row-all' : '' }}" 
+                    data-search-name="{{ strtolower($user->name) }}"
+                    data-search-email="{{ strtolower($user->email) }}"
+                    data-search-id="{{ $user->staff ? strtolower($user->staff->employee_id) : 'n/a' }}"
+                    data-search-department="{{ $user->staff ? strtolower($user->staff->department) : ($user->role === 'admin' ? 'admin' : 'n/a') }}"
+                    data-search-role="{{ strtolower($user->role) }}">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">{{ $user->name }}</div>
                     </td>
@@ -281,6 +287,97 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Search functionality
+    const searchInput = document.getElementById('staffSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const allRows = document.querySelectorAll('.staff-row');
+            let visibleCount = 0;
+            
+            allRows.forEach((row, index) => {
+                const name = row.getAttribute('data-search-name') || '';
+                const email = row.getAttribute('data-search-email') || '';
+                const id = row.getAttribute('data-search-id') || '';
+                const department = row.getAttribute('data-search-department') || '';
+                const role = row.getAttribute('data-search-role') || '';
+                
+                // Check if search term matches any field
+                const matches = !searchTerm || 
+                    name.includes(searchTerm) || 
+                    email.includes(searchTerm) || 
+                    id.includes(searchTerm) || 
+                    department.includes(searchTerm) || 
+                    role.includes(searchTerm);
+                
+                if (searchTerm) {
+                    // When searching, show/hide based on match
+                    if (matches) {
+                        row.classList.remove('hidden');
+                        visibleCount++;
+                    } else {
+                        row.classList.add('hidden');
+                    }
+                } else {
+                    // When not searching, restore original visibility
+                    if (index < 5) {
+                        row.classList.remove('hidden');
+                        visibleCount++;
+                    } else {
+                        // Rows beyond index 5 should be hidden unless showAllState is true
+                        if (showAllState) {
+                            row.classList.remove('hidden');
+                            visibleCount++;
+                        } else {
+                            row.classList.add('hidden');
+                        }
+                    }
+                }
+            });
+            
+            // Update "Show All Staff" button visibility and text
+            const toggleButton = document.getElementById('toggleStaffList');
+            if (toggleButton) {
+                if (searchTerm) {
+                    // When searching, hide toggle button
+                    toggleButton.style.display = 'none';
+                } else {
+                    // When not searching, show toggle button if there are more than 5 rows
+                    const totalRows = allRows.length;
+                    if (totalRows > 5) {
+                        toggleButton.style.display = 'block';
+                        const toggleText = document.getElementById('toggleText');
+                        const chevronIcon = document.getElementById('chevronIcon');
+                        if (toggleText) {
+                            toggleText.textContent = `Show All Staff (${totalRows - 5} more)`;
+                        }
+                        if (chevronIcon && !showAllState) {
+                            chevronIcon.style.transform = 'rotate(0deg)';
+                        }
+                    } else {
+                        toggleButton.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Show "No results" message if no matches
+            const tbody = document.querySelector('tbody');
+            let noResultsRow = tbody.querySelector('.no-results-row');
+            
+            if (visibleCount === 0 && searchTerm) {
+                if (!noResultsRow) {
+                    noResultsRow = document.createElement('tr');
+                    noResultsRow.className = 'no-results-row';
+                    noResultsRow.innerHTML = '<td colspan="6" class="px-6 py-4 text-center text-gray-500">No staff members found matching your search.</td>';
+                    tbody.appendChild(noResultsRow);
+                }
+            } else if (noResultsRow) {
+                noResultsRow.remove();
+            }
+        });
+        
+    }
+    
     // Close modals on Escape key
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
@@ -289,18 +386,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Toggle staff list functionality
+    // Toggle staff list functionality - declare showAllState globally
+    let showAllState = false;
     const toggleStaffListBtn = document.getElementById('toggleStaffList');
     if (toggleStaffListBtn) {
-        let showAll = false;
         toggleStaffListBtn.addEventListener('click', function() {
+            // Don't toggle if search is active
+            const searchInput = document.getElementById('staffSearchInput');
+            if (searchInput && searchInput.value.trim()) {
+                return;
+            }
+            
             const allRows = document.querySelectorAll('.staff-row-all');
             const chevronIcon = document.getElementById('chevronIcon');
             const toggleText = document.getElementById('toggleText');
             
-            showAll = !showAll;
+            showAllState = !showAllState;
             
-            if (showAll) {
+            if (showAllState) {
                 // Show all rows
                 allRows.forEach(row => {
                     row.classList.remove('hidden');

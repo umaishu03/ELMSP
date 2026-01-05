@@ -20,12 +20,10 @@ class StaffSeeder extends Seeder
             'email' => 'staff@gmail.com',
             'password' => Hash::make('123456789'),
             'role' => 'staff',
-            'employee_id' => 'EMP001',
         ]);
 
         $this->command->info('Staff user created successfully!');
         $this->command->info('Email: staff@gmail.com');
         $this->command->info('Password: 123456789');
-        $this->command->info('Employee ID: EMP001');
     }
 }

@@ -48,6 +48,7 @@ class StaffTimetableController extends Controller
 
         /**
          * AUTO-COPY: if this week has no shifts, copy previous week's shifts
+         * When copying, exclude overtime hours if the staff has OT that week
          */
         $existingCount = \App\Models\Shift::whereIn('date', $dates)->count();
 
@@ -62,15 +63,84 @@ class StaffTimetableController extends Controller
 
             foreach ($prevShifts as $old) {
                 $newDate = Carbon::parse($old->date)->addWeek()->format('Y-m-d');
+                
+                // Check if staff has approved overtime for this date
+                $overtime = \App\Models\Overtime::where('staff_id', $old->staff_id)
+                    ->where('ot_date', $old->date)
+                    ->where('status', 'approved')
+                    ->first();
+                
+                // Calculate base shift times (without OT hours)
+                $startTime = $old->start_time;
+                $endTime = $old->end_time;
+                
+                // If overtime exists and shift has times, subtract OT hours from end_time
+                if ($overtime && $overtime->hours && $startTime && $endTime) {
+                    $otHours = (float) $overtime->hours;
+                    $currentEndTime = Carbon::parse($endTime);
+                    
+                    // Subtract OT hours from end time to get base shift end time
+                    $baseEndTime = $currentEndTime->copy()->subHours($otHours);
+                    $endTime = $baseEndTime->format('H:i');
+                }
 
                 \App\Models\Shift::create([
                     'staff_id'      => $old->staff_id ?? null,
                     'date'          => $newDate,
-                    'start_time'    => $old->start_time,
-                    'end_time'      => $old->end_time,
+                    'start_time'    => $startTime,
+                    'end_time'      => $endTime,
                     'break_minutes' => $old->break_minutes,
                     'rest_day'      => $old->rest_day,
                 ]);
+            }
+        }
+
+        /**
+         * AUTO-ASSIGN REST DAYS: For newly hired staff, assign rest days for days before hire date in joining week
+         */
+        $weekEnd = $weekStart->copy()->addDays(6);
+        
+        foreach ($staff as $staffMember) {
+            // Check if staff has a hire_date
+            if (!$staffMember->hire_date) {
+                continue;
+            }
+            
+            // Parse hire_date as Carbon if needed and normalize to start of day
+            $hireDate = $staffMember->hire_date instanceof Carbon 
+                ? $staffMember->hire_date->copy()->startOfDay()
+                : Carbon::parse($staffMember->hire_date)->startOfDay();
+            
+            // Check if hire_date falls within the current week (joining week)
+            // Compare dates only (ignore time)
+            $weekStartDate = $weekStart->copy()->startOfDay();
+            $weekEndDate = $weekEnd->copy()->startOfDay();
+            
+            if ($hireDate->gte($weekStartDate) && $hireDate->lte($weekEndDate)) {
+                // This is the joining week - assign rest days for days before hire date
+                foreach ($dates as $dateStr) {
+                    $date = Carbon::parse($dateStr)->startOfDay();
+                    
+                    // Only assign rest day if date is before hire date
+                    if ($date->lt($hireDate)) {
+                        // Check if shift already exists for this staff and date
+                        $existingShift = \App\Models\Shift::where('staff_id', $staffMember->id)
+                            ->where('date', $dateStr)
+                            ->first();
+                        
+                        // Only create rest day shift if no shift exists
+                        if (!$existingShift) {
+                            \App\Models\Shift::create([
+                                'staff_id'      => $staffMember->id,
+                                'date'          => $dateStr,
+                                'start_time'    => '',
+                                'end_time'      => '',
+                                'break_minutes' => 0,
+                                'rest_day'      => true,
+                            ]);
+                        }
+                    }
+                }
             }
         }
 

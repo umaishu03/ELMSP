@@ -3,7 +3,7 @@
 @section('content')
 <!-- Success Toast Message -->
 @if($message = Session::get('success'))
-<div id="successToast" class="fixed top-6 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-fade-in-down">
+<div id="successToast" class="fixed top-0 left-0 right-0 sm:top-4 sm:left-auto sm:right-6 bg-green-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-none sm:rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 z-[9999] animate-fade-in-down max-w-full sm:max-w-lg">
     <div class="flex items-center gap-3">
         <i class="fas fa-check-circle text-xl"></i>
         <div>
@@ -355,12 +355,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const endDate = endDateInput.value;
 
         if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+            // Parse dates as local dates (not UTC) to avoid timezone issues
+            const start = new Date(startDate + 'T00:00:00');
+            const end = new Date(endDate + 'T00:00:00');
             
             if (end >= start) {
+                // Calculate difference in days (inclusive of both start and end date)
+                // For same date: diffTime = 0, diffDays = 0 + 1 = 1 day
+                // For consecutive dates: diffTime = 86400000ms (1 day), diffDays = 1 + 1 = 2 days
                 const diffTime = Math.abs(end - start);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end date
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
                 totalDaysEl.textContent = diffDays + ' ' + (diffDays === 1 ? 'day' : 'days');
             } else {
                 totalDaysEl.textContent = '0 days';

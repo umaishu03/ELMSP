@@ -854,6 +854,10 @@ class PayrollController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'portrait');
             $pdf->setOption('enable-local-file-access', true);
+            $pdf->setOption('isHtml5ParserEnabled', true);
+            $pdf->setOption('isRemoteEnabled', true);
+            // Ensure content fits on one page
+            $pdf->setOption('dpi', 96);
             
             // Return PDF with proper headers
             return $pdf->download($filename, [
@@ -1043,6 +1047,10 @@ class PayrollController extends Controller
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->setPaper('A4', 'portrait');
             $pdf->setOption('enable-local-file-access', true);
+            $pdf->setOption('isHtml5ParserEnabled', true);
+            $pdf->setOption('isRemoteEnabled', true);
+            // Ensure content fits on one page
+            $pdf->setOption('dpi', 96);
             
             // Return PDF with proper headers
             return $pdf->download($filename, [

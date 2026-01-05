@@ -11,6 +11,9 @@ class Leave extends Model
     use HasFactory;
 
     protected $table = 'leaves';
+    
+    // Track leaves that have already had balance applied in created event
+    protected static $balanceAppliedInCreated = [];
 
     protected $fillable = [
         'staff_id',
@@ -264,25 +267,46 @@ class Leave extends Model
 
         // After creation: auto-approve or reject based on constraints
         static::created(function ($leave) {
+            // Store original status
+            $originalStatus = $leave->status;
+            
             // Auto-approve or reject based on constraints
             $leave->autoApproveOrReject();
-            $leave->save();
             
-            if ($leave->status === 'approved') {
-                // apply balance changes and link shifts for approved leave
+            // If status changed to approved, apply balance immediately
+            if ($originalStatus !== 'approved' && $leave->status === 'approved') {
+                // Mark this leave ID as having balance applied in created event
+                static::$balanceAppliedInCreated[$leave->id] = true;
                 $leave->applyToBalance();
                 $leave->linkShifts();
             }
+            
+            // Save the status change using saveQuietly to avoid triggering updated event
+            $leave->saveQuietly();
         });
 
         // On update: if status transitions to approved, link shifts; if it transitions away, unlink
         static::updated(function ($leave) {
+            // Skip if balance was already applied in created event
+            if (isset(static::$balanceAppliedInCreated[$leave->id])) {
+                unset(static::$balanceAppliedInCreated[$leave->id]);
+                return;
+            }
+            
+            // Only process if status was actually changed
+            if (!$leave->wasChanged('status')) {
+                return;
+            }
+            
             $original = $leave->getOriginal('status');
-            if ($original !== 'approved' && $leave->status === 'approved') {
+            $current = $leave->status;
+            
+            // Check if status changed to approved
+            if ($original !== 'approved' && $current === 'approved') {
                 // status became approved -> apply balance + link
                 $leave->applyToBalance();
                 $leave->linkShifts();
-            } elseif ($original === 'approved' && $leave->status !== 'approved') {
+            } elseif ($original === 'approved' && $current !== 'approved') {
                 // status changed away from approved -> revert balance + unlink
                 $leave->revertFromBalance();
                 $leave->unlinkShifts();
@@ -306,6 +330,12 @@ class Leave extends Model
     public function applyToBalance()
     {
         if (! $this->staff_id || ! $this->leave_type_id || ! $this->total_days) {
+            Log::warning('Leave applyToBalance skipped - missing required fields', [
+                'leave_id' => $this->id,
+                'staff_id' => $this->staff_id,
+                'leave_type_id' => $this->leave_type_id,
+                'total_days' => $this->total_days
+            ]);
             return;
         }
 
@@ -324,11 +354,17 @@ class Leave extends Model
                 'used_days' => 0,
                 'remaining_days' => $total,
             ]);
+            Log::info('LeaveBalance created', ['staff_id' => $this->staff_id, 'leave_type_id' => $this->leave_type_id, 'total_days' => $total]);
         }
 
+        // Store values before update for logging
+        $oldUsed = (float) $lb->used_days;
+        $oldRemaining = (float) $lb->remaining_days;
+        $daysToApply = (float) $this->total_days;
+
         // Apply used days (ensure we don't go negative)
-        $used = (float) $lb->used_days + (float) $this->total_days;
-        $remaining = (float) $lb->remaining_days - (float) $this->total_days;
+        $used = $oldUsed + $daysToApply;
+        $remaining = $oldRemaining - $daysToApply;
         if ($remaining < 0) {
             $remaining = 0;
         }
@@ -336,7 +372,17 @@ class Leave extends Model
         $lb->used_days = $used;
         $lb->remaining_days = $remaining;
         $lb->save();
-        Log::info('Leave applied to balance', ['leave_id' => $this->id, 'staff_id' => $this->staff_id, 'leave_type_id' => $this->leave_type_id, 'days' => $this->total_days, 'used' => $lb->used_days, 'remaining' => $lb->remaining_days]);
+        
+        Log::info('Leave applied to balance', [
+            'leave_id' => $this->id,
+            'staff_id' => $this->staff_id,
+            'leave_type_id' => $this->leave_type_id,
+            'total_days' => $daysToApply,
+            'old_used' => $oldUsed,
+            'old_remaining' => $oldRemaining,
+            'new_used' => $used,
+            'new_remaining' => $remaining
+        ]);
     }
 
     /**
