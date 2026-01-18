@@ -1,6 +1,7 @@
 @extends('layouts.staff')
 @section('title', 'Leave Status')
 @section('content')
+
 <!-- Success Toast Message -->
 @if($message = Session::get('success'))
 <div id="successToast" class="fixed top-0 left-0 right-0 sm:top-4 sm:left-auto sm:right-6 bg-green-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-none sm:rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 z-[9999] animate-fade-in-down max-w-full sm:max-w-lg">
@@ -17,7 +18,6 @@
 </div>
 
 <script>
-    // Auto-hide toast after 5 seconds
     setTimeout(function() {
         const toast = document.getElementById('successToast');
         if (toast) {
@@ -29,226 +29,306 @@
 </script>
 @endif
 
+<!-- Error Toast Message (for rejected leaves) -->
+@if($error = Session::get('error'))
+<div id="errorToast" class="fixed top-0 left-0 right-0 sm:top-4 sm:left-auto sm:right-6 bg-red-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-none sm:rounded-lg shadow-lg flex items-center gap-2 sm:gap-3 z-[9999] animate-fade-in-down max-w-full sm:max-w-lg">
+    <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+        <i class="fas fa-exclamation-circle text-lg sm:text-xl flex-shrink-0"></i>
+        <div class="min-w-0 flex-1">
+            <p class="font-semibold text-sm sm:text-base">Leave Request Rejected!</p>
+            <p class="text-xs sm:text-sm text-red-100 break-words">{{ $error }}</p>
+        </div>
+    </div>
+    <button onclick="document.getElementById('errorToast').remove()" class="ml-2 sm:ml-4 text-white hover:text-red-100 flex-shrink-0">
+        <i class="fas fa-times text-lg sm:text-xl"></i>
+    </button>
+</div>
+
+<script>
+    setTimeout(function() {
+        const toast = document.getElementById('errorToast');
+        if (toast) {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 8000); // Show error toast longer (8 seconds) so user can read the rejection reason
+</script>
+@endif
+
 <!-- Breadcrumbs -->
 <div class="mb-6">
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6 lg:mt-8 mb-8 sm:mb-12">
-    <!-- Header Card -->
-    <div class="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 sm:mb-6">
-        <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6">
-            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-white flex items-center gap-2 sm:gap-3">
-                <i class="fas fa-clipboard-list text-lg sm:text-xl md:text-2xl"></i>
-                <span class="break-words">Leave Status</span>
-            </h1>
-            <p class="text-purple-100 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base">Track and manage all your leave applications</p>
+<!-- Title -->
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Leave Status</h1>
+    <p class="text-gray-600">Track your leave balances and application progress.</p>
         </div>
     
+<div class="space-y-6">
 
-    <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
-    <!-- Leave Balance Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <!-- Leave Balance Cards Section -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-chart-pie text-purple-600 text-sm sm:text-base"></i>
+                    <span>Leave Balance</span>
+                </h2>
+            </div>
+            <div class="p-4 sm:p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4 leave-balance-grid">
+
         <!-- Annual Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Annual Leave</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-calendar-alt text-blue-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-blue-50 to-white rounded-xl shadow-sm border border-blue-100 p-3 sm:p-4 hover:shadow-md hover:border-blue-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Annual Leave</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-calendar-alt text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-blue-600 text-xs sm:text-sm truncate ml-1" id="annualBalance">{{ isset($leaveBalance['annual']['balance']) ? $leaveBalance['annual']['balance'] . ' days' : '0 days' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">Max</span>
-                    <span class="text-gray-700 text-xs">14 days</span>
+                            <div class="flex justify-between items-center pt-1 border-t border-blue-100">
+                                <span class="text-xs text-gray-500">Max</span>
+                                <span class="text-xs text-gray-700 font-medium">14 days</span>
                 </div>
             </div>
         </div>
 
         <!-- Medical Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Medical Leave</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-clinic-medical text-red-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-red-50 to-white rounded-xl shadow-sm border border-red-100 p-3 sm:p-4 hover:shadow-md hover:border-red-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Medical Leave</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-400 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-clinic-medical text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-red-600 text-xs sm:text-sm truncate ml-1" id="medicalBalance">{{ isset($leaveBalance['medical']['balance']) ? $leaveBalance['medical']['balance'] . ' days' : '0 days' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">Max</span>
-                    <span class="text-gray-700 text-xs">14 days</span>
+                            <div class="flex justify-between items-center pt-1 border-t border-red-100">
+                                <span class="text-xs text-gray-500">Max</span>
+                                <span class="text-xs text-gray-700 font-medium">14 days</span>
                 </div>
             </div>
         </div>
 
         <!-- Hospitalization Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Hospitalization</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-hospital text-pink-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-pink-50 to-white rounded-xl shadow-sm border border-pink-100 p-3 sm:p-4 hover:shadow-md hover:border-pink-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Hospitalization</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-hospital text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-pink-600 text-xs sm:text-sm truncate ml-1" id="hospitalizationBalance">{{ isset($leaveBalance['hospitalization']['balance']) ? $leaveBalance['hospitalization']['balance'] . ' days' : '0 days' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">Max</span>
-                    <span class="text-gray-700 text-xs">30 days</span>
+                            <div class="flex justify-between items-center pt-1 border-t border-pink-100">
+                                <span class="text-xs text-gray-500">Max</span>
+                                <span class="text-xs text-gray-700 font-medium">30 days</span>
                 </div>
             </div>
         </div>
 
         <!-- Emergency Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Emergency</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-exclamation-triangle text-orange-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-orange-50 to-white rounded-xl shadow-sm border border-orange-100 p-3 sm:p-4 hover:shadow-md hover:border-orange-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Emergency</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-exclamation-triangle text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-orange-600 text-xs sm:text-sm truncate ml-1" id="emergencyBalance">{{ isset($leaveBalance['emergency']['balance']) ? $leaveBalance['emergency']['balance'] . ' days' : '0 days' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">Max</span>
-                    <span class="text-gray-700 text-xs">7 days</span>
+                            <div class="flex justify-between items-center pt-1 border-t border-orange-100">
+                                <span class="text-xs text-gray-500">Max</span>
+                                <span class="text-xs text-gray-700 font-medium">7 days</span>
                 </div>
             </div>
         </div>
 
         <!-- Replacement Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Replacement</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-exchange-alt text-teal-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-teal-50 to-white rounded-xl shadow-sm border border-teal-100 p-3 sm:p-4 hover:shadow-md hover:border-teal-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Replacement</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-exchange-alt text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-teal-600 text-xs sm:text-sm truncate ml-1" id="replacementBalance">{{ isset($leaveBalance['replacement']['balance']) ? $leaveBalance['replacement']['balance'] . ' days' : '0 days' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">OT Hours</span>
-                    <span class="text-gray-700 text-xs truncate" id="otHours">{{ isset($leaveBalance['replacement']['balance']) && $leaveBalance['replacement']['balance'] > 0 ? ($leaveBalance['replacement']['balance'] * 8) . 'h' : '0h' }}</span>
+                            <div class="flex justify-between items-center pt-1 border-t border-teal-100">
+                                <span class="text-xs text-gray-500">OT Hours</span>
+                                <span class="text-xs text-gray-700 font-medium truncate" id="otHours">{{ isset($leaveBalance['replacement']['balance']) && $leaveBalance['replacement']['balance'] > 0 ? ($leaveBalance['replacement']['balance'] * 8) . 'h' : '0h' }}</span>
                 </div>
             </div>
         </div>
 
         <!-- Marriage Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Marriage</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-heart text-purple-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-purple-50 to-white rounded-xl shadow-sm border border-purple-100 p-3 sm:p-4 hover:shadow-md hover:border-purple-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Marriage</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-heart text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-purple-600 text-xs sm:text-sm truncate ml-1" id="marriageBalance">{{ isset($leaveBalance['marriage']['balance']) ? ($leaveBalance['marriage']['balance'] === 0 ? 'Used' : 'Available') : 'Available' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">Max</span>
-                    <span class="text-gray-700 text-xs">One-time</span>
+                            <div class="flex justify-between items-center pt-1 border-t border-purple-100">
+                                <span class="text-xs text-gray-500">Max</span>
+                                <span class="text-xs text-gray-700 font-medium">One-time</span>
                 </div>
             </div>
         </div>
 
         <!-- Unpaid Leave -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between mb-2 sm:mb-3">
-                <h3 class="text-xs sm:text-sm font-semibold text-gray-700 truncate">Unpaid</h3>
-                <div class="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                    <i class="fas fa-minus-circle text-gray-600 text-xs sm:text-sm"></i>
+                    <div class="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 hover:shadow-md hover:border-gray-200 transition-all duration-200 group leave-type-card">
+                        <div class="flex items-start gap-2 mb-2 sm:mb-3">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-semibold text-gray-800 leading-tight break-words">Unpaid</h3>
+                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                <i class="fas fa-minus-circle text-white text-xs sm:text-sm"></i>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-600 text-xs">Balance</span>
+                        <div class="space-y-1.5 sm:space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-gray-600">Balance</span>
                     <span class="font-bold text-gray-600 text-xs sm:text-sm truncate ml-1" id="unpaidBalance">{{ isset($leaveBalance['unpaid']['balance']) ? $leaveBalance['unpaid']['balance'] . ' days' : '10 days' }}</span>
                 </div>
-                <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 text-xs">Max</span>
-                    <span class="text-gray-700 text-xs">10 days</span>
-                </div>
-            </div>
-        </div>
+                            <div class="flex justify-between items-center pt-1 border-t border-gray-100">
+                                <span class="text-xs text-gray-500">Max</span>
+                                <span class="text-xs text-gray-700 font-medium">10 days</span>
     </div>
     </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
-        <!-- Total Applications -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 md:p-6 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                    <p class="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">Total Applications</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-gray-900" id="totalApplications">0</p>
-                </div>
-                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                    <i class="fas fa-file-alt text-purple-600 text-lg sm:text-xl"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Pending -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 md:p-6 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                    <p class="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">Pending</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-amber-600" id="pendingCount">0</p>
+
+        <!-- ✅ Application Statistics (clean + consistent + aligned) -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-chart-bar text-purple-600 text-sm sm:text-base"></i>
+                        <span>Application Statistics</span>
+                    </h2>
+                    <span class="text-xs sm:text-sm text-gray-500">All time</span>
                 </div>
-                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                    <i class="fas fa-clock text-amber-600 text-lg sm:text-xl"></i>
-                </div>
+            </div>
+
+            <div class="p-4 sm:p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    
+                    <!-- Total -->
+                    <div class="stat-card border-purple-100 bg-purple-50/40">
+                        <div class="stat-top">
+                            <div class="stat-icon bg-purple-600">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="stat-label">Total Applications</p>
+                                <p class="stat-value text-gray-900" id="totalApplications">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-bottom text-purple-700/80">
+                            <i class="fas fa-infinity"></i>
+                            <span>Overall submissions</span>
+                        </div>
+                    </div>
+
+                    <!-- Pending -->
+                    <div class="stat-card border-amber-100 bg-amber-50/40">
+                        <div class="stat-top">
+                            <div class="stat-icon bg-amber-600">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="stat-label">Pending</p>
+                                <p class="stat-value text-gray-900" id="pendingCount">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-bottom text-amber-700/80">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>Awaiting review</span>
             </div>
         </div>
 
         <!-- Approved -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 md:p-6 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                    <p class="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">Approved</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-green-600" id="approvedCount">0</p>
+                    <div class="stat-card border-green-100 bg-green-50/40">
+                        <div class="stat-top">
+                            <div class="stat-icon bg-green-600">
+                                <i class="fas fa-check-circle"></i>
                 </div>
-                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                    <i class="fas fa-check-circle text-green-600 text-lg sm:text-xl"></i>
+                            <div class="min-w-0">
+                                <p class="stat-label">Approved</p>
+                                <p class="stat-value text-gray-900" id="approvedCount">0</p>
                 </div>
             </div>
+                        <div class="stat-bottom text-green-700/80">
+                            <i class="fas fa-thumbs-up"></i>
+                            <span>Successfully approved</span>
+                        </div>
         </div>
 
         <!-- Rejected -->
-        <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 md:p-6 hover:shadow-md transition-all">
-            <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                    <p class="text-xs sm:text-sm font-medium text-gray-600 mb-1 truncate">Rejected</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-red-600" id="rejectedCount">0</p>
+                    <div class="stat-card border-red-100 bg-red-50/40">
+                        <div class="stat-top">
+                            <div class="stat-icon bg-red-600">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="stat-label">Rejected</p>
+                                <p class="stat-value text-gray-900" id="rejectedCount">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-bottom text-red-700/80">
+                            <i class="fas fa-ban"></i>
+                            <span>Not approved</span>
+                        </div>
                 </div>
-                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                    <i class="fas fa-times-circle text-red-600 text-lg sm:text-xl"></i>
+
                 </div>
             </div>
         </div>
-    </div>
+
 
     <!-- Filter and Action Bar -->
-    <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6 mb-4 sm:mb-6">
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-4 sm:p-6">
         <div class="flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-center justify-between">
             <!-- Filters -->
             <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
@@ -301,17 +381,16 @@
     </div>
 
     <!-- Leave Applications List -->
-    <div class="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gray-50">
-            <h2 class="text-base sm:text-lg font-semibold text-gray-800">Leave Applications</h2>
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-list-ul text-purple-600 text-sm sm:text-base"></i>
+                    <span>Leave Applications</span>
+                </h2>
         </div>
 
-        <!-- Applications Container -->
-        <div id="applicationsContainer" class="divide-y divide-gray-200">
-            <!-- Application items will be inserted here by JavaScript -->
-        </div>
+            <div id="applicationsContainer" class="divide-y divide-gray-200"></div>
 
-        <!-- Empty State -->
         <div id="emptyState" class="hidden p-6 sm:p-8 md:p-12 text-center">
             <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
                 <i class="fas fa-inbox text-gray-400 text-2xl sm:text-3xl"></i>
@@ -330,7 +409,6 @@
 <!-- View Details Modal -->
 <div id="detailsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden mx-auto">
-        <!-- Modal Header -->
         <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
             <h3 class="text-lg sm:text-xl font-bold text-white truncate pr-2">Application Details</h3>
             <button onclick="closeModal()" class="text-white hover:text-gray-200 transition-colors flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center">
@@ -338,36 +416,14 @@
             </button>
         </div>
 
-        <!-- Modal Body -->
-        <div class="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-100px)] sm:max-h-[calc(90vh-120px)]" id="modalContent">
-            <!-- Content will be inserted by JavaScript -->
-        </div>
+        <div class="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-100px)] sm:max-h-[calc(90vh-120px)]" id="modalContent"></div>
     </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Real leave balance data from controller
     const leaveBalance = {!! json_encode($leaveBalance ?? []) !!};
-    const leaveApplications = {!! json_encode($leaveApplications->map(function($leave) {
-        $typeName = $leave->leaveType?->type_name ?? null;
-        return [
-            'id' => $leave->id,
-            'leaveType' => $typeName,
-            'leaveTypeName' => $typeName ? ucfirst(str_replace('_', ' ', $typeName)) : null,
-            'startDate' => $leave->start_date,
-            'endDate' => $leave->end_date,
-            'days' => $leave->total_days,
-            'reason' => $leave->reason,
-            'status' => $leave->status,
-            'appliedDate' => $leave->created_at->format('Y-m-d'),
-            'autoApproved' => $leave->auto_approved ?? false,
-            'approvedDate' => $leave->approved_date ? $leave->approved_date->format('Y-m-d') : null,
-            'remarks' => $leave->remarks,
-            'attachment' => $leave->attachment ? route('staff.leave.attachment', $leave->id) : null,
-            'attachmentName' => $leave->attachment ? basename($leave->attachment) : null
-        ];
-    })->toArray()) !!};
+    const leaveApplications = {!! json_encode($leaveApplicationsForJson ?? []) !!};
 
     const applicationsContainer = document.getElementById('applicationsContainer');
     const emptyState = document.getElementById('emptyState');
@@ -375,7 +431,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const leaveTypeFilter = document.getElementById('leaveTypeFilter');
     const searchInput = document.getElementById('searchInput');
 
-    // Update leave balance display
     function updateBalanceDisplay() {
         document.getElementById('annualBalance').textContent = `${leaveBalance.annual?.balance || 0} days`;
         document.getElementById('medicalBalance').textContent = `${leaveBalance.medical?.balance || 0} days`;
@@ -383,14 +438,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('emergencyBalance').textContent = `${leaveBalance.emergency?.balance || 0} days`;
         const replacementBalance = leaveBalance.replacement?.balance || 0;
         document.getElementById('replacementBalance').textContent = `${replacementBalance} days`;
-        // OT hours should be 0 if balance is 0, otherwise show balance * 8
         const otHours = replacementBalance > 0 ? (replacementBalance * 8) : 0;
         document.getElementById('otHours').textContent = `${otHours.toFixed(0)}h`;
         document.getElementById('marriageBalance').textContent = leaveBalance.marriage?.balance === 0 ? 'Used' : 'Available';
         document.getElementById('unpaidBalance').textContent = `${leaveBalance.unpaid?.balance || 10} days`;
     }
 
-    // Update stats
     function updateStats(applications) {
         document.getElementById('totalApplications').textContent = applications.length;
         document.getElementById('pendingCount').textContent = applications.filter(a => a.status === 'pending').length;
@@ -398,7 +451,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('rejectedCount').textContent = applications.filter(a => a.status === 'rejected').length;
     }
 
-    // Get status badge HTML
     function getStatusBadge(status) {
         const badges = {
             pending: '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"><i class="fas fa-clock"></i> Pending</span>',
@@ -408,7 +460,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return badges[status] || '';
     }
 
-    // Get leave type color
     function getLeaveTypeColor(type) {
         const colors = {
             annual: 'bg-blue-100 text-blue-700',
@@ -422,13 +473,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return colors[type] || 'bg-gray-100 text-gray-700';
     }
 
-    // Format date
     function formatDate(dateString) {
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
         return new Date(dateString).toLocaleDateString('en-US', options);
     }
 
-    // Render applications
     function renderApplications(applications) {
         if (applications.length === 0) {
             applicationsContainer.innerHTML = '';
@@ -470,7 +519,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
-    // Filter applications
     function filterApplications() {
         const statusValue = statusFilter.value.toLowerCase();
         const leaveTypeValue = leaveTypeFilter.value.toLowerCase();
@@ -482,14 +530,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const matchesSearch = !searchValue || 
                 app.leaveTypeName.toLowerCase().includes(searchValue) ||
                 app.reason.toLowerCase().includes(searchValue);
-            
             return matchesStatus && matchesLeaveType && matchesSearch;
         });
 
         renderApplications(filtered);
     }
 
-    // Show details modal
     window.showDetails = function(id) {
         const app = leaveApplications.find(a => a.id === id);
         if (!app) return;
@@ -497,7 +543,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const modalContent = document.getElementById('modalContent');
         modalContent.innerHTML = `
             <div class="space-y-4 sm:space-y-6">
-                <!-- Status and Leave Type -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-4 border-b border-gray-200">
                     <div class="min-w-0">
                         <span class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold ${getLeaveTypeColor(app.leaveType)}">
@@ -510,7 +555,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <!-- Application Details -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                         <label class="text-xs font-medium text-gray-500 uppercase">Start Date</label>
@@ -530,7 +574,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
 
-                <!-- Reason -->
                 <div>
                     <label class="text-xs font-medium text-gray-500 uppercase">Reason</label>
                     <p class="text-sm sm:text-base text-gray-900 mt-2 p-3 sm:p-4 bg-gray-50 rounded-lg break-words">${app.reason}</p>
@@ -551,6 +594,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <a href="${app.attachment}" download class="text-purple-600 hover:text-purple-700 text-xs sm:text-sm font-medium px-3 py-2 rounded min-h-[44px] flex items-center justify-center">
                                     <i class="fas fa-download mr-1"></i>Download
                                 </a>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${app.status === 'rejected' && app.rejectionReason ? `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+                        <div class="flex items-start gap-2 sm:gap-3">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-lg sm:text-xl mt-0.5 flex-shrink-0"></i>
+                            <div class="min-w-0">
+                                <p class="text-sm sm:text-base font-semibold text-red-900 mb-1">Rejection Reason</p>
+                                <p class="text-xs sm:text-sm text-red-800">${app.rejectionReason}</p>
                             </div>
                         </div>
                     </div>
@@ -600,31 +655,22 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('detailsModal').classList.remove('hidden');
     };
 
-    // Close modal
     window.closeModal = function() {
         document.getElementById('detailsModal').classList.add('hidden');
     };
 
-    // Event listeners
     statusFilter.addEventListener('change', filterApplications);
     leaveTypeFilter.addEventListener('change', filterApplications);
     searchInput.addEventListener('input', filterApplications);
 
-    // Close modal on outside click
     document.getElementById('detailsModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeModal();
-        }
+        if (e.target === this) closeModal();
     });
 
-    // Close modal on Escape key
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeModal();
-        }
+        if (e.key === 'Escape') closeModal();
     });
 
-    // Initialize
     updateBalanceDisplay();
     updateStats(leaveApplications);
     renderApplications(leaveApplications);
@@ -633,19 +679,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
     @keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    
-    .animate-fade-in-down {
-        animation: fadeInDown 0.3s ease-out;
+    .animate-fade-in-down { animation: fadeInDown 0.3s ease-out; }
+
+    /* ✅ cleaner stats cards (consistent with your leave balance vibe) */
+    .stat-card{
+        border-radius: 1rem;
+        border-width: 1px;
+        padding: 1rem;
+        background: rgba(255,255,255,0.9);
+        transition: all .2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,.04);
     }
+    .stat-card:hover{
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,.06);
+    }
+    .stat-top{
+        display:flex;
+        align-items:center;
+        gap: .75rem;
+    }
+    .stat-icon{
+        width: 44px;
+        height: 44px;
+        border-radius: .9rem;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color: #fff;
+        flex-shrink: 0;
+        box-shadow: 0 6px 14px rgba(0,0,0,.12);
+    }
+    .stat-label{
+        font-size: .8rem;
+        color: #6b7280;
+        font-weight: 600;
+        line-height: 1.1rem;
+    }
+    .stat-value{
+        font-size: 1.75rem;
+        font-weight: 800;
+        line-height: 2rem;
+        margin-top: .15rem;
+    }
+    .stat-bottom{
+        margin-top: .9rem;
+        padding-top: .75rem;
+        border-top: 1px dashed rgba(0,0,0,.08);
+        display:flex;
+        align-items:center;
+        gap: .5rem;
+        font-size: .8rem;
+        font-weight: 600;
+    }
+    .stat-bottom i{ opacity: .85; }
 
     /* Responsive adjustments for very small screens */
     @media (max-width: 640px) {
@@ -655,14 +745,21 @@ document.addEventListener('DOMContentLoaded', function() {
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+        .leave-type-card h3 {
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            word-break: break-word;
+            hyphens: auto;
+        }
+        .leave-type-card { min-height: auto; }
     }
 
-    /* Ensure touch-friendly buttons on mobile */
+    @media (max-width: 374px) {
+        .leave-balance-grid { grid-template-columns: 1fr !important; }
+    }
+
     @media (max-width: 768px) {
-        button, a {
-            min-height: 44px;
-            min-width: 44px;
-        }
+        button, a { min-height: 44px; min-width: 44px; }
     }
 </style>
 @endsection

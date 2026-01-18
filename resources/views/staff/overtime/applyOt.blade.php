@@ -6,25 +6,64 @@
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
 
-<div class="max-w-7xl mx-auto mt-8 mb-12 space-y-6">
-    <!-- ========== APPLY OVERTIME SECTION ========== -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="bg-gradient-to-r from-gray-600 to-gray-800 px-8 py-6">
-            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
-                <i class="fas fa-clock"></i>
-                Apply Overtime
-            </h1>
-            <p class="text-gray-200 mt-2">Request overtime work for upcoming shifts</p>
+<!-- Success Message Popup -->
+@if(session('success'))
+    <div id="successPopup" class="fixed top-20 right-4 z-[70] animate-slide-in-right">
+        <div class="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-md">
+            <div class="flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold">Success!</p>
+                <p class="text-sm text-green-50">{{ session('success') }}</p>
+            </div>
+            <button onclick="document.getElementById('successPopup').remove()" class="flex-shrink-0 text-white hover:text-green-100 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
+    </div>
+@endif
 
+<!-- Error Message Popup -->
+@if(session('error'))
+    <div id="errorPopup" class="fixed top-20 right-4 z-[70] animate-slide-in-right">
+        <div class="bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-md">
+            <div class="flex-shrink-0">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold">Error!</p>
+                <p class="text-sm text-red-50">{{ session('error') }}</p>
+            </div>
+            <button onclick="document.getElementById('errorPopup').remove()" class="flex-shrink-0 text-white hover:text-red-100 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+@endif
+
+<!-- Title -->
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Apply Overtime</h1>
+    <p class="text-gray-600 flex items-center gap-2">
+        <i class="fas fa-clock text-blue-500"></i>
+        Request overtime work for upcoming shifts
+    </p>
+</div>
+
+<div class="space-y-6">
+    <!-- ========== APPLY OVERTIME SECTION ========== -->
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
         <form id="applyOvertimeForm" method="POST" action="{{ route('staff.applyOt.store') }}">
             @csrf
-            @if(session('success'))
-                <div class="p-3 mb-4 bg-green-50 text-green-700 rounded">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="p-3 mb-4 bg-red-50 text-red-700 rounded">{{ session('error') }}</div>
-            @endif
             <!-- Weekly Limit Warning -->
             <div id="weeklyLimitWarning" class="hidden p-4 mb-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
                 <div class="flex items-center">
@@ -158,13 +197,12 @@
                     </button>
                     <button type="submit" class="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2">
                         <i class="fas fa-paper-plane"></i>
-                        <span>Submit Request</span>
+                        <span>Submit</span>
                     </button>
                 </div>
             </div>
         </form>
     </div>
-
 </div>
 
 <script>
@@ -373,6 +411,47 @@ document.getElementById('applyOvertimeForm').addEventListener('submit', async fu
     // Allow normal form submission
     this.submit();
 });
+
+// Auto-hide success/error popups after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    const successPopup = document.getElementById('successPopup');
+    const errorPopup = document.getElementById('errorPopup');
+    
+    if (successPopup) {
+        setTimeout(() => {
+            successPopup.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            successPopup.style.opacity = '0';
+            successPopup.style.transform = 'translateX(100%)';
+            setTimeout(() => successPopup.remove(), 300);
+        }, 5000);
+    }
+    
+    if (errorPopup) {
+        setTimeout(() => {
+            errorPopup.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            errorPopup.style.opacity = '0';
+            errorPopup.style.transform = 'translateX(100%)';
+            setTimeout(() => errorPopup.remove(), 300);
+        }, 5000);
+    }
+});
 </script>
+
+<style>
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+}
+</style>
 
 @endsection

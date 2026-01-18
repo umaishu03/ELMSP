@@ -46,6 +46,14 @@ class Overtime extends Model
     }
 
     /**
+     * Get the shift record linked to this overtime
+     */
+    public function shift()
+    {
+        return $this->hasOne(Shift::class, 'overtime_id');
+    }
+
+    /**
      * Backwards-compatible accessor to get the related User via staff
      */
     public function getUserAttribute()
@@ -118,36 +126,13 @@ class Overtime extends Model
             ];
         }
 
-        $department = $staff->department;
-        
-        // Get current OT applications for this day by department
-        $otCountThisDay = self::whereHas('staff', function ($query) use ($department) {
-            $query->where('department', $department);
-        })
-        ->where('ot_date', $overtime->ot_date)
-        ->where('status', 'approved')
-        ->count();
-
-        // Department limits for OT
-        $limits = [
-            'manager' => 1,
-            'supervisor' => 1,
-            'cashier' => 2,
-            'barista' => 2,
-            'joki' => 2,
-            'waiter' => 3,
-            'kitchen' => 3,
-        ];
-
-        $max = $limits[$department] ?? 0;
-
-        // Check if department limit not exceeded
-        if ($otCountThisDay >= $max) {
-            return [
-                'valid' => false,
-                'message' => "Department {$department} already has {$max} OT approvals for this date"
-            ];
+        // Check department weekly limit
+        $departmentLimitCheck = self::checkDepartmentWeeklyLimit($overtime);
+        if (!$departmentLimitCheck['valid']) {
+            return $departmentLimitCheck;
         }
+
+        $department = $staff->department;
 
         // Check hours limit per person
         $maxHours = in_array($department, ['manager', 'supervisor']) ? 2 : 4;
@@ -215,6 +200,71 @@ class Overtime extends Model
         return [
             'valid' => true,
             'message' => 'Weekly OT limit check passed'
+        ];
+    }
+
+    /**
+     * Check department weekly OT application limit
+     * Returns array with validation status and messages
+     */
+    public static function checkDepartmentWeeklyLimit($overtime)
+    {
+        $staff = $overtime->staff;
+        if (!$staff) {
+            return [
+                'valid' => false,
+                'message' => 'Staff record not found'
+            ];
+        }
+
+        $department = $staff->department;
+        
+        // Get the week start (Monday) and end (Sunday) for the OT date
+        $otDate = $overtime->ot_date instanceof Carbon 
+            ? $overtime->ot_date 
+            : Carbon::parse($overtime->ot_date);
+        $weekStart = $otDate->copy()->startOfWeek();
+        $weekEnd = $weekStart->copy()->endOfWeek();
+        
+        // Get current OT applications for this week by department (pending + approved)
+        // Exclude current OT if it's an update
+        $otCountThisWeek = self::whereHas('staff', function ($query) use ($department) {
+            $query->where('department', $department);
+        })
+        ->whereBetween('ot_date', [$weekStart, $weekEnd])
+        ->where(function($q) use ($overtime) {
+            // Exclude current OT if it's an update
+            if ($overtime->id) {
+                $q->where('id', '!=', $overtime->id);
+            }
+        })
+        ->whereIn('status', ['pending', 'approved'])
+        ->count();
+
+        // Department weekly limits for OT applications
+        $limits = [
+            'manager' => 1,
+            'supervisor' => 1,
+            'cashier' => 2,
+            'barista' => 2,
+            'joki' => 2,
+            'waiter' => 3,
+            'kitchen' => 3,
+        ];
+
+        $max = $limits[$department] ?? 0;
+
+        // Check if department weekly limit not exceeded
+        if ($otCountThisWeek >= $max) {
+            return [
+                'valid' => false,
+                'message' => "Department {$department} already has {$otCountThisWeek} OT application(s) this week. Maximum allowed is {$max} OT application(s) per week."
+            ];
+        }
+
+        return [
+            'valid' => true,
+            'message' => 'Department weekly OT limit check passed'
         ];
     }
 }

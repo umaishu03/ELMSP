@@ -21,8 +21,6 @@ class PayrollController extends Controller
             ->get()
             ->map(function ($staff) use ($year, $month) {
                 $user = $staff->user;
-                $monthsWorked = $staff->hire_date ? $staff->hire_date->diffInMonths(now()) : 0;
-                $fixedCommission = $monthsWorked >= 3 ? 200 : 0;
                 $fullBasicSalary = $staff->salary ?? 0;
                 $department = $staff->department;
                 $role = $user->role ?? '';
@@ -38,6 +36,11 @@ class PayrollController extends Controller
                 $monthStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
                 $monthEnd = \Carbon\Carbon::create($year, $month, 1)->endOfMonth();
                 
+                // Calculate months worked up to the end of the selected payroll month (not current date)
+                // This ensures commission eligibility is based on the payroll period, not when viewing it
+                $monthsWorked = $hireDate ? $hireDate->diffInMonths($monthEnd) : 0;
+                $fixedCommission = $monthsWorked >= 3 ? 200 : 0;
+                
                 // Determine the start date for counting shifts (hire date or month start, whichever is later)
                 // For mid-month joins, only count shifts from hire date onwards
                 if ($hireDate && $hireDate instanceof \Carbon\Carbon && $hireDate->gt($monthStart)) {
@@ -51,20 +54,59 @@ class PayrollController extends Controller
                     ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
                     ->get();
                 
-                // Industry Standard: Total working days is ALWAYS 27 (full month), regardless of hire date
-                // Calculate full month working days: Dec has 31 days, minus 4 rest days (1 per week) = 27 days
+                // Calculate full month working days based on month length
+                // 26 days for months with 31 days, 25 days for months with 30 days
                 $totalDaysInMonth = $monthEnd->day; // Days in the month (28-31)
-                $weeksInMonth = $totalDaysInMonth / 7;
-                $restDaysInMonth = floor($weeksInMonth); // 1 rest day per week
-                $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth; // Always 27 for December
+                if ($totalDaysInMonth == 31) {
+                    $totalWorkingDaysInMonth = 26; // 31 days - 5 rest days = 26 working days
+                } elseif ($totalDaysInMonth == 30) {
+                    $totalWorkingDaysInMonth = 25; // 30 days - 5 rest days = 25 working days
+                } else {
+                    // For February (28 or 29 days): 28 - 4 = 24, 29 - 4 = 25
+                    $restDaysInMonth = floor($totalDaysInMonth / 7); // 1 rest day per week
+                    $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth;
+                }
                 
                 // Get unpaid leave type ID for filtering
                 $unpaidLeaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
                 $unpaidLeaveTypeId = $unpaidLeaveType ? $unpaidLeaveType->id : null;
 
+                // Get all approved leaves for this staff in the selected month
+                // This includes both paid and unpaid leaves
+                $approvedLeaves = \App\Models\Leave::where('staff_id', $staff->id)
+                    ->where('status', 'approved')
+                    ->where(function($query) use ($monthStart, $monthEnd) {
+                        $query->whereBetween('start_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                              ->orWhereBetween('end_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                              ->orWhere(function($q) use ($monthStart, $monthEnd) {
+                                  $q->where('start_date', '<=', $monthStart->format('Y-m-d'))
+                                    ->where('end_date', '>=', $monthEnd->format('Y-m-d'));
+                              });
+                    })
+                    ->with('leaveType')
+                    ->get();
+
+                // Create a map of dates to leave types for quick lookup
+                $dateToLeaveMap = [];
+                foreach ($approvedLeaves as $leave) {
+                    $startDate = \Carbon\Carbon::parse($leave->start_date);
+                    $endDate = \Carbon\Carbon::parse($leave->end_date);
+                    $currentDate = $startDate->copy();
+                    
+                    while ($currentDate->lte($endDate)) {
+                        $dateStr = $currentDate->format('Y-m-d');
+                        if (!isset($dateToLeaveMap[$dateStr])) {
+                            $dateToLeaveMap[$dateStr] = [];
+                        }
+                        $dateToLeaveMap[$dateStr][] = $leave;
+                        $currentDate->addDay();
+                    }
+                }
+
                 // Count actual shifts worked (only from hire date onwards for mid-month joins)
-                // Note: Exclude paid leaves but include unpaid leave (unpaid will be deducted separately)
+                // Note: Include paid leaves (acceptable leaves) in shift count, exclude only unpaid leave
                 $workingDays = 0;
+                $processedDates = []; // Track dates we've already processed
                 
                 foreach ($shifts as $shift) {
                     // Parse shift date (handle both Carbon instances and strings)
@@ -72,36 +114,105 @@ class PayrollController extends Controller
                         ? $shift->date 
                         : \Carbon\Carbon::parse($shift->date);
                     
-                    // Only count shifts that are:
-                    // 1. Not rest days (rest_day = false or null)
-                    // 2. Not on paid leave (unpaid leave is included, will be deducted separately)
-                    // 3. Have start_time and end_time (actual working shift)
-                    // 4. On or after the calculation start date (hire date or month start)
-                    $isRestDay = $shift->rest_day ?? false;
-                    $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
+                    $shiftDateStr = $shiftDate->format('Y-m-d');
                     $isAfterStartDate = $shiftDate->startOfDay()->gte($calcStartDate->startOfDay());
                     
-                    // Check if on leave
-                    $isOnLeave = !empty($shift->leave_id);
-                    $isOnUnpaidLeave = false;
-                    if ($isOnLeave && $unpaidLeaveTypeId) {
-                        // Check if this leave is unpaid leave
-                        $leave = \App\Models\Leave::find($shift->leave_id);
-                        $isOnUnpaidLeave = $leave && $leave->leave_type_id == $unpaidLeaveTypeId;
+                    if (!$isAfterStartDate) {
+                        continue; // Skip shifts before hire date
                     }
                     
-                    // Include shift if: not rest day, has working hours, after start date, and (not on leave OR on unpaid leave)
-                    if (!$isRestDay && $hasWorkingHours && $isAfterStartDate && (!$isOnLeave || $isOnUnpaidLeave)) {
+                    $processedDates[] = $shiftDateStr; // Mark this date as processed
+                    
+                    // Check if there's an approved leave on this date
+                    $leavesOnDate = $dateToLeaveMap[$shiftDateStr] ?? [];
+                    $isOnUnpaidLeave = false;
+                    $isOnPaidLeave = false;
+                    
+                    foreach ($leavesOnDate as $leave) {
+                        if ($leave->leave_type_id == $unpaidLeaveTypeId) {
+                            $isOnUnpaidLeave = true;
+                            break; // Unpaid leave takes precedence
+                        } else {
+                            $isOnPaidLeave = true; // Any other approved leave is considered paid
+                        }
+                    }
+                    
+                    // If on unpaid leave, don't count this day
+                    if ($isOnUnpaidLeave) {
+                        continue;
+                    }
+                    
+                    // If on paid leave, count it as a working day (always, regardless of rest_day or working hours)
+                    // Paid leave days should always be included in shift count
+                    if ($isOnPaidLeave) {
+                        $workingDays++;
+                        continue;
+                    }
+                    
+                    // For regular shifts (no leave), only count if:
+                    // 1. Not rest days (rest_day = false or null)
+                    // 2. Have start_time and end_time (actual working shift)
+                    $isRestDay = $shift->rest_day ?? false;
+                    $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
+                    
+                    if (!$isRestDay && $hasWorkingHours) {
                         $workingDays++;
                     }
                 }
                 
-                // Calculate pro-rated basic salary
-                // Industry Standard Formula: (Full Basic Salary ÷ 27) × Shifts Worked
-                // This ensures all staff are paid proportionally to the full month, regardless of hire date
-                $basic_salary = $totalWorkingDaysInMonth > 0 
-                    ? ($fullBasicSalary / $totalWorkingDaysInMonth) * $workingDays 
-                    : 0;
+                // Also count paid leave days that don't have shift records
+                // This ensures paid leaves are counted even if shifts weren't created/linked
+                foreach ($dateToLeaveMap as $dateStr => $leaves) {
+                    // Skip if we already processed this date
+                    if (in_array($dateStr, $processedDates)) {
+                        continue;
+                    }
+                    
+                    $date = \Carbon\Carbon::parse($dateStr);
+                    $isAfterStartDate = $date->startOfDay()->gte($calcStartDate->startOfDay());
+                    
+                    if (!$isAfterStartDate) {
+                        continue; // Skip dates before hire date
+                    }
+                    
+                    // Check if any of the leaves on this date are unpaid
+                    $hasUnpaidLeave = false;
+                    $hasPaidLeave = false;
+                    
+                    foreach ($leaves as $leave) {
+                        if ($leave->leave_type_id == $unpaidLeaveTypeId) {
+                            $hasUnpaidLeave = true;
+                            break;
+                        } else {
+                            $hasPaidLeave = true;
+                        }
+                    }
+                    
+                    // If it's a paid leave (and not unpaid), count it as a working day
+                    // Paid leave days should always be included in shift count, regardless of rest_day status
+                    if ($hasPaidLeave && !$hasUnpaidLeave) {
+                        $workingDays++;
+                    }
+                }
+                
+                // Calculate daily rate: (Full Basic Salary ÷ Total Working Days in Month)
+                // Used for unpaid leave deduction and prorated salary calculations
+                $dailyRate = $totalWorkingDaysInMonth > 0 ? ($fullBasicSalary / $totalWorkingDaysInMonth) : 0;
+                
+                // Basic salary is fixed (full amount), not calculated based on shifts
+                $basic_salary = $fullBasicSalary;
+                
+                // Calculate prorated salary for mid-month joins
+                // Prorated salary applies when staff does not work the full payroll period
+                // If missing only 1-2 days, consider as full month (no prorated calculation)
+                $minWorkingDaysForFullMonth = max(1, $totalWorkingDaysInMonth - 2);
+                if ($workingDays >= $minWorkingDaysForFullMonth) {
+                    // Full month (or missing 1-2 days): prorated salary equals basic salary
+                    $prorated_salary = $fullBasicSalary;
+                } else {
+                    // Partial month (missing more than 2 days): Prorated Salary = (Basic Salary ÷ Total Working Days in Month) × Actual Working Days
+                    $prorated_salary = $workingDays * $dailyRate;
+                }
 
                 // Calculate OT claims for payroll (approved, selected month)
                 // Get approved OT claims for payroll that belong to this staff
@@ -117,19 +228,6 @@ class PayrollController extends Controller
                 
                 // Filter claims that belong to this staff
                 $otClaims = $allOtClaims->filter(function($claim) use ($user, $staff, $staffOvertimeIds) {
-                    // Check if linked to this user's payroll
-                    if ($claim->payroll_id) {
-                        $payroll = \App\Models\Payroll::find($claim->payroll_id);
-                        if ($payroll && $payroll->user_id == $user->id) {
-                            return true;
-                        }
-                    }
-                    
-                    // Check if linked to staff's overtime
-                    if ($claim->overtime_id && in_array($claim->overtime_id, $staffOvertimeIds)) {
-                        return true;
-                    }
-                    
                     // Check if ot_ids contains any of staff's overtime IDs
                     $claimOtIds = $claim->ot_ids ?? [];
                     if (is_array($claimOtIds) && !empty(array_intersect($claimOtIds, $staffOvertimeIds))) {
@@ -155,12 +253,19 @@ class PayrollController extends Controller
                     
                     // Check if this shift is on a public holiday
                     if (in_array($shiftDateStr, $publicHolidays)) {
-                        // Only count if it's a working shift (has hours, not rest day, not on leave)
+                        // Only count if it's a working shift (has hours, not rest day, not on unpaid leave)
+                        // Paid leaves are acceptable and should be counted
                         $isRestDay = $shift->rest_day ?? false;
                         $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
-                        $isOnLeave = !empty($shift->leave_id);
                         
-                        if (!$isRestDay && $hasWorkingHours && !$isOnLeave) {
+                        // Check if on unpaid leave (paid leaves are acceptable)
+                        $isOnUnpaidLeave = false;
+                        if (!empty($shift->leave_id) && $unpaidLeaveTypeId) {
+                            $leave = \App\Models\Leave::find($shift->leave_id);
+                            $isOnUnpaidLeave = $leave && $leave->leave_type_id == $unpaidLeaveTypeId;
+                        }
+                        
+                        if (!$isRestDay && $hasWorkingHours && !$isOnUnpaidLeave) {
                             // Calculate hours worked (excluding break time)
                             $startTime = \Carbon\Carbon::parse($shift->start_time);
                             $endTime = \Carbon\Carbon::parse($shift->end_time);
@@ -224,9 +329,6 @@ class PayrollController extends Controller
                         }
                     }
                     
-                    // Calculate daily rate: (Full Basic Salary ÷ 27)
-                    $dailyRate = $totalWorkingDaysInMonth > 0 ? ($fullBasicSalary / $totalWorkingDaysInMonth) : 0;
-                    
                     // Calculate deduction: unpaid leave days × daily rate
                     $unpaidLeaveDeduction = $unpaidLeaveDays * $dailyRate;
                 }
@@ -254,6 +356,7 @@ class PayrollController extends Controller
                     'role' => $role,
                     'department' => $department,
                     'basic_salary' => $basic_salary,
+                    'prorated_salary' => $prorated_salary,
                     'full_basic_salary' => $fullBasicSalary,
                     'fixed_commission' => $fixedCommission,
                     'marketing_bonus' => $marketingBonus,
@@ -263,8 +366,8 @@ class PayrollController extends Controller
                     'ph_ot_hours' => $ph_ot_hours,
                     'hire_date' => $hireDate,
                     'working_days' => $workingDays,
-                    'total_working_days' => $totalWorkingDaysInMonth, // Always 27 (full month)
-                    'is_full_month' => $workingDays == $totalWorkingDaysInMonth && $calcStartDate->eq($monthStart),
+                    'total_working_days' => $totalWorkingDaysInMonth, // 26 for 31-day months, 25 for 30-day months
+                    'is_full_month' => $workingDays >= $totalWorkingDaysInMonth, // Full month if shifts >= total working days
                     'user_id' => $user->id,
                     'payroll_status' => $payrollStatus,
                 ];
@@ -278,11 +381,10 @@ class PayrollController extends Controller
         
         if ($payrollsForMonth->count() > 0) {
             $statuses = $payrollsForMonth->pluck('status')->unique()->toArray();
-            // If all are approved/paid, show the highest status
-            if (in_array('paid', $statuses)) {
+            // Treat 'approved' as 'paid' for backward compatibility
+            // If all are paid (or approved), show paid status
+            if (in_array('paid', $statuses) || in_array('approved', $statuses)) {
                 $overallStatus = 'paid';
-            } elseif (in_array('approved', $statuses)) {
-                $overallStatus = 'approved';
             } else {
                 $overallStatus = 'draft';
             }
@@ -302,13 +404,20 @@ class PayrollController extends Controller
         }
 
         $staff = $user->staff;
-        $monthsWorked = $staff->hire_date ? $staff->hire_date->diffInMonths(now()) : 0;
-        $fixedCommission = $monthsWorked >= 3 ? 200 : 0;
         $fullBasicSalary = $staff->salary ?? 0;
 
         // Calculate working days based on shifts
         $monthStart = \Carbon\Carbon::create($year, $month, 1)->startOfMonth();
         $monthEnd = \Carbon\Carbon::create($year, $month, 1)->endOfMonth();
+        
+        // Calculate months worked up to the end of the selected payroll month (not current date)
+        // This ensures commission eligibility is based on the payroll period, not when viewing it
+        $hireDate = $staff->hire_date;
+        if ($hireDate && !($hireDate instanceof \Carbon\Carbon)) {
+            $hireDate = \Carbon\Carbon::parse($hireDate);
+        }
+        $monthsWorked = $hireDate ? $hireDate->diffInMonths($monthEnd) : 0;
+        $fixedCommission = $monthsWorked >= 3 ? 200 : 0;
         // Ensure hire_date is a Carbon instance
         $hireDate = $staff->hire_date;
         if ($hireDate && !($hireDate instanceof \Carbon\Carbon)) {
@@ -322,12 +431,18 @@ class PayrollController extends Controller
             $calcStartDate = $monthStart->copy()->startOfDay();
         }
 
-        // Industry Standard: Total working days is ALWAYS based on full month, regardless of hire date
-        // Calculate full month working days: month days minus rest days (1 per week)
+        // Calculate full month working days based on month length
+        // 26 days for months with 31 days, 25 days for months with 30 days
         $totalDaysInMonth = $monthEnd->day; // Days in the month (28-31)
-        $weeksInMonth = $totalDaysInMonth / 7;
-        $restDaysInMonth = floor($weeksInMonth); // 1 rest day per week
-        $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth; // Always 27 for December
+        if ($totalDaysInMonth == 31) {
+            $totalWorkingDaysInMonth = 26; // 31 days - 5 rest days = 26 working days
+        } elseif ($totalDaysInMonth == 30) {
+            $totalWorkingDaysInMonth = 25; // 30 days - 5 rest days = 25 working days
+        } else {
+            // For February (28 or 29 days): 28 - 4 = 24, 29 - 4 = 25
+            $restDaysInMonth = floor($totalDaysInMonth / 7); // 1 rest day per week
+            $totalWorkingDaysInMonth = $totalDaysInMonth - $restDaysInMonth;
+        }
 
         // Get all shifts for this staff in the selected month
         $shifts = Shift::where('staff_id', $staff->id)
@@ -338,39 +453,147 @@ class PayrollController extends Controller
         $unpaidLeaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower('unpaid')])->first();
         $unpaidLeaveTypeId = $unpaidLeaveType ? $unpaidLeaveType->id : null;
 
+        // Get all approved leaves for this staff in the selected month
+        // This includes both paid and unpaid leaves
+        $approvedLeaves = \App\Models\Leave::where('staff_id', $staff->id)
+            ->where('status', 'approved')
+            ->where(function($query) use ($monthStart, $monthEnd) {
+                $query->whereBetween('start_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                      ->orWhereBetween('end_date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                      ->orWhere(function($q) use ($monthStart, $monthEnd) {
+                          $q->where('start_date', '<=', $monthStart->format('Y-m-d'))
+                            ->where('end_date', '>=', $monthEnd->format('Y-m-d'));
+                      });
+            })
+            ->with('leaveType')
+            ->get();
+
+        // Create a map of dates to leave types for quick lookup
+        $dateToLeaveMap = [];
+        foreach ($approvedLeaves as $leave) {
+            $startDate = \Carbon\Carbon::parse($leave->start_date);
+            $endDate = \Carbon\Carbon::parse($leave->end_date);
+            $currentDate = $startDate->copy();
+            
+            while ($currentDate->lte($endDate)) {
+                $dateStr = $currentDate->format('Y-m-d');
+                if (!isset($dateToLeaveMap[$dateStr])) {
+                    $dateToLeaveMap[$dateStr] = [];
+                }
+                $dateToLeaveMap[$dateStr][] = $leave;
+                $currentDate->addDay();
+            }
+        }
+
         // Count actual shifts worked (only from hire date onwards for mid-month joins)
-        // Note: Exclude paid leaves but include unpaid leave (unpaid will be deducted separately)
+        // Note: Include paid leaves (acceptable leaves) in shift count, exclude only unpaid leave
         $workingDays = 0;
+        $processedDates = []; // Track dates we've already processed
+        
         foreach ($shifts as $shift) {
             $shiftDate = $shift->date instanceof \Carbon\Carbon 
                 ? $shift->date 
                 : \Carbon\Carbon::parse($shift->date);
             
-            $isRestDay = $shift->rest_day ?? false;
-            $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
+            $shiftDateStr = $shiftDate->format('Y-m-d');
             $isAfterStartDate = $shiftDate->startOfDay()->gte($calcStartDate->startOfDay());
             
-            // Check if on leave
-            $isOnLeave = !empty($shift->leave_id);
-            $isOnUnpaidLeave = false;
-            if ($isOnLeave && $unpaidLeaveTypeId) {
-                // Check if this leave is unpaid leave
-                $leave = \App\Models\Leave::find($shift->leave_id);
-                $isOnUnpaidLeave = $leave && $leave->leave_type_id == $unpaidLeaveTypeId;
+            if (!$isAfterStartDate) {
+                continue; // Skip shifts before hire date
             }
             
-            // Include shift if: not rest day, has working hours, after start date, and (not on leave OR on unpaid leave)
-            if (!$isRestDay && $hasWorkingHours && $isAfterStartDate && (!$isOnLeave || $isOnUnpaidLeave)) {
+            $processedDates[] = $shiftDateStr; // Mark this date as processed
+            
+            // Check if there's an approved leave on this date
+            $leavesOnDate = $dateToLeaveMap[$shiftDateStr] ?? [];
+            $isOnUnpaidLeave = false;
+            $isOnPaidLeave = false;
+            
+            foreach ($leavesOnDate as $leave) {
+                if ($leave->leave_type_id == $unpaidLeaveTypeId) {
+                    $isOnUnpaidLeave = true;
+                    break; // Unpaid leave takes precedence
+                } else {
+                    $isOnPaidLeave = true; // Any other approved leave is considered paid
+                }
+            }
+            
+            // If on unpaid leave, don't count this day
+            if ($isOnUnpaidLeave) {
+                continue;
+            }
+            
+            // If on paid leave, count it as a working day (always, regardless of rest_day or working hours)
+            // Paid leave days should always be included in shift count
+            if ($isOnPaidLeave) {
+                $workingDays++;
+                continue;
+            }
+            
+            // For regular shifts (no leave), only count if:
+            // 1. Not rest days (rest_day = false or null)
+            // 2. Have start_time and end_time (actual working shift)
+            $isRestDay = $shift->rest_day ?? false;
+            $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
+            
+            if (!$isRestDay && $hasWorkingHours) {
+                $workingDays++;
+            }
+        }
+        
+        // Also count paid leave days that don't have shift records
+        // This ensures paid leaves are counted even if shifts weren't created/linked
+        foreach ($dateToLeaveMap as $dateStr => $leaves) {
+            // Skip if we already processed this date
+            if (in_array($dateStr, $processedDates)) {
+                continue;
+            }
+            
+            $date = \Carbon\Carbon::parse($dateStr);
+            $isAfterStartDate = $date->startOfDay()->gte($calcStartDate->startOfDay());
+            
+            if (!$isAfterStartDate) {
+                continue; // Skip dates before hire date
+            }
+            
+            // Check if any of the leaves on this date are unpaid
+            $hasUnpaidLeave = false;
+            $hasPaidLeave = false;
+            
+            foreach ($leaves as $leave) {
+                if ($leave->leave_type_id == $unpaidLeaveTypeId) {
+                    $hasUnpaidLeave = true;
+                    break;
+                } else {
+                    $hasPaidLeave = true;
+                }
+            }
+            
+            // If it's a paid leave (and not unpaid), count it as a working day
+            // Paid leave days should always be included in shift count, regardless of rest_day status
+            if ($hasPaidLeave && !$hasUnpaidLeave) {
                 $workingDays++;
             }
         }
 
-        // Calculate pro-rated basic salary
-        // Industry Standard Formula: (Full Basic Salary ÷ 27) × Shifts Worked
-        // This ensures all staff are paid proportionally to the full month, regardless of hire date
-        $basic_salary = $totalWorkingDaysInMonth > 0 
-            ? ($fullBasicSalary / $totalWorkingDaysInMonth) * $workingDays 
-            : 0;
+        // Calculate daily rate: (Full Basic Salary ÷ Total Working Days in Month)
+        // Used for unpaid leave deduction and prorated salary calculations
+        $dailyRate = $totalWorkingDaysInMonth > 0 ? ($fullBasicSalary / $totalWorkingDaysInMonth) : 0;
+        
+        // Basic salary is fixed (full amount), not calculated based on shifts
+        $basic_salary = $fullBasicSalary;
+        
+        // Calculate prorated salary for mid-month joins
+        // Prorated salary applies when staff does not work the full payroll period
+        // If missing only 1-2 days, consider as full month (no prorated calculation)
+        $minWorkingDaysForFullMonth = max(1, $totalWorkingDaysInMonth - 2);
+        if ($workingDays >= $minWorkingDaysForFullMonth) {
+            // Full month (or missing 1-2 days): prorated salary equals basic salary
+            $prorated_salary = $fullBasicSalary;
+        } else {
+            // Partial month (missing more than 2 days): Prorated Salary = (Basic Salary ÷ Total Working Days in Month) × Actual Working Days
+            $prorated_salary = $workingDays * $dailyRate;
+        }
 
         // Get OT claims for this staff
         $staffOvertimeIds = \App\Models\Overtime::where('staff_id', $staff->id)->pluck('id')->toArray();
@@ -382,15 +605,6 @@ class PayrollController extends Controller
             ->get();
         
         $otClaims = $allOtClaims->filter(function($claim) use ($user, $staff, $staffOvertimeIds) {
-            if ($claim->payroll_id) {
-                $payroll = \App\Models\Payroll::find($claim->payroll_id);
-                if ($payroll && $payroll->user_id == $user->id) {
-                    return true;
-                }
-            }
-            if ($claim->overtime_id && in_array($claim->overtime_id, $staffOvertimeIds)) {
-                return true;
-            }
             $claimOtIds = $claim->ot_ids ?? [];
             if (is_array($claimOtIds) && !empty(array_intersect($claimOtIds, $staffOvertimeIds))) {
                 return true;
@@ -416,12 +630,19 @@ class PayrollController extends Controller
             
             // Check if this shift is on a public holiday
             if (in_array($shiftDateStr, $publicHolidays)) {
-                // Only count if it's a working shift (has hours, not rest day, not on leave)
+                // Only count if it's a working shift (has hours, not rest day, not on unpaid leave)
+                // Paid leaves are acceptable and should be counted
                 $isRestDay = $shift->rest_day ?? false;
                 $hasWorkingHours = !empty($shift->start_time) && !empty($shift->end_time);
-                $isOnLeave = !empty($shift->leave_id);
                 
-                if (!$isRestDay && $hasWorkingHours && !$isOnLeave) {
+                // Check if on unpaid leave (paid leaves are acceptable)
+                $isOnUnpaidLeave = false;
+                if (!empty($shift->leave_id) && $unpaidLeaveTypeId) {
+                    $leave = \App\Models\Leave::find($shift->leave_id);
+                    $isOnUnpaidLeave = $leave && $leave->leave_type_id == $unpaidLeaveTypeId;
+                }
+                
+                if (!$isRestDay && $hasWorkingHours && !$isOnUnpaidLeave) {
                     // Calculate hours worked (excluding break time)
                     $startTime = \Carbon\Carbon::parse($shift->start_time);
                     $endTime = \Carbon\Carbon::parse($shift->end_time);
@@ -484,9 +705,6 @@ class PayrollController extends Controller
                     $unpaidLeaveDays += $overlapDays;
                 }
             }
-            
-            // Calculate daily rate: (Full Basic Salary ÷ 27)
-            $dailyRate = $totalWorkingDaysInMonth > 0 ? ($fullBasicSalary / $totalWorkingDaysInMonth) : 0;
             
             // Calculate deduction: unpaid leave days × daily rate
             $unpaidLeaveDeduction = $unpaidLeaveDays * $dailyRate;
@@ -580,7 +798,8 @@ class PayrollController extends Controller
     }
 
     /**
-     * Update payroll status (draft → approved → paid, or revert to draft)
+     * Update payroll status (draft → paid, or revert to draft)
+     * Note: 'approved' status is treated as 'paid' for backward compatibility
      */
     public function publishPayroll(Request $request)
     {
@@ -589,29 +808,32 @@ class PayrollController extends Controller
             'staff_ids' => 'nullable|string',
             'publish_all' => 'nullable|boolean',
             'status' => 'required|in:draft,approved,paid',
+            'bonus' => 'nullable|array',
+            'bonus.*' => 'nullable|numeric|min:0',
         ]);
 
         $selectedMonth = $request->input('month');
         $targetStatus = $request->input('status');
         list($year, $month) = explode('-', $selectedMonth);
+        
+        // Get marketing bonuses from request (if provided)
+        $bonuses = $request->input('bonus', []);
 
         $updated = 0;
         $created = 0;
         $statusMessages = [
             'draft' => 'reverted to draft',
-            'approved' => 'published',
-            'paid' => 'marked as paid',
+            'paid' => 'published',
         ];
 
         // Determine current status based on target status
+        // Now we only have draft → paid workflow (treat 'approved' as 'paid' for backward compatibility)
         $currentStatus = null;
-        if ($targetStatus === 'approved') {
+        if ($targetStatus === 'paid') {
             $currentStatus = 'draft';
-        } elseif ($targetStatus === 'paid') {
-            $currentStatus = 'approved';
         } elseif ($targetStatus === 'draft') {
-            // Can revert from approved or paid
-            $currentStatus = ['approved', 'paid'];
+            // Can revert from paid (or approved for backward compatibility)
+            $currentStatus = ['paid', 'approved'];
         }
 
         // Check if publish_all is set to '1' (string) or true
@@ -646,11 +868,17 @@ class PayrollController extends Controller
         }
 
         // Ensure payroll records exist for all staff before updating status
-        // Recalculate all payrolls to ensure they match current data
+        // Recalculate all payrolls to ensure they match current data (sync)
+        // If bonuses are provided, use them; otherwise use existing values
+        $synced = 0;
         foreach ($staffToProcess as $userId) {
-            $payroll = $this->recalculatePayroll($userId, $year, $month);
+            // Get bonus amount for this user if provided
+            $bonusAmount = isset($bonuses[$userId]) ? floatval($bonuses[$userId]) : null;
+            
+            $payroll = $this->recalculatePayroll($userId, $year, $month, $bonusAmount);
             if ($payroll && !$payroll->wasRecentlyCreated) {
-                // Record was updated, not created
+                // Record was updated (synced), not created
+                $synced++;
             } elseif ($payroll) {
                 $created++;
             }
@@ -670,9 +898,18 @@ class PayrollController extends Controller
             
             $updated = $query->update(['status' => $targetStatus]);
             
-            $message = "All payrolls {$statusMessages[$targetStatus]} successfully! {$updated} payroll record(s) updated.";
-            if ($created > 0) {
-                $message .= " {$created} new payroll record(s) created.";
+            // Enhanced message for publish action (draft → paid)
+            if ($targetStatus === 'paid' && $currentStatus === 'draft') {
+                $bonusText = !empty($bonuses) ? "Marketing bonuses saved, " : "";
+                $message = "{$bonusText}Payrolls synced and published successfully! {$synced} payroll record(s) synced, {$updated} payroll record(s) published.";
+                if ($created > 0) {
+                    $message .= " {$created} new payroll record(s) created.";
+                }
+            } else {
+                $message = "All payrolls {$statusMessages[$targetStatus]} successfully! {$updated} payroll record(s) updated.";
+                if ($created > 0) {
+                    $message .= " {$created} new payroll record(s) created.";
+                }
             }
         } elseif (!empty($staffIds)) {
             // Update selected staff payrolls
@@ -688,9 +925,18 @@ class PayrollController extends Controller
             
             $updated = $query->update(['status' => $targetStatus]);
             
-            $message = "Selected payrolls {$statusMessages[$targetStatus]} successfully! {$updated} payroll record(s) updated.";
-            if ($created > 0) {
-                $message .= " {$created} new payroll record(s) created.";
+            // Enhanced message for publish action (draft → paid)
+            if ($targetStatus === 'paid' && $currentStatus === 'draft') {
+                $bonusText = !empty($bonuses) ? "Marketing bonuses saved, " : "";
+                $message = "{$bonusText}Selected payrolls synced and published successfully! {$synced} payroll record(s) synced, {$updated} payroll record(s) published.";
+                if ($created > 0) {
+                    $message .= " {$created} new payroll record(s) created.";
+                }
+            } else {
+                $message = "Selected payrolls {$statusMessages[$targetStatus]} successfully! {$updated} payroll record(s) updated.";
+                if ($created > 0) {
+                    $message .= " {$created} new payroll record(s) created.";
+                }
             }
         }
 
@@ -1081,8 +1327,13 @@ class PayrollController extends Controller
      */
     private function getPublicHolidaysForMonth($year, $month)
     {
-        // Public holidays for 2026 (can be extended for other years)
+        // Public holidays for 2025 and 2026 (can be extended for other years)
         $allHolidays = [
+            // 2025 Public Holidays
+            '2025-10-20', // Deepavali (Diwali) - Monday
+            '2025-12-25', // Christmas Day (National) - Thursday
+            
+            // 2026 Public Holidays
             '2026-01-01', // New Year's Day
             '2026-01-31', // Thaipusam
             '2026-02-01', // Federal Territory Day

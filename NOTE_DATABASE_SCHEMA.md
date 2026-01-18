@@ -19,15 +19,17 @@ This document describes the new database tables and relationships for the automa
 - `created_at`, `updated_at` - Timestamps
 
 ### Business Logic:
-- **Automatic Approval:** OT is auto-approved based on department limits
-- **Department OT Limits per day:**
-  - Cashier: 2 people max
-  - Barista: 2 people max
-  - Joki: 2 people max
-  - Waiter: 5 people max
-  - Kitchen: 4 people max
-  - Manager: 1 person max
-  - Supervisor: 1 person max
+- **Automatic Approval:** OT requires admin approval and is validated against department limits
+- **Department OT Application Limits per week:**
+  - Manager: 1 OT application per week
+  - Supervisor: 1 OT application per week
+  - Cashier: 2 OT applications per week
+  - Barista: 2 OT applications per week
+  - Joki: 2 OT applications per week
+  - Waiter: 3 OT applications per week
+  - Kitchen: 3 OT applications per week
+
+- **Maximum OT applications per person per week:** 2 applications
 
 - **Maximum OT hours per person per day:**
   - Manager/Supervisor: 2 hours/day (12 hours workday)
@@ -75,7 +77,7 @@ This document describes the new database tables and relationships for the automa
 - Hospitalization: 30 days max
 - Medical: 14 days max
 - Emergency: 7 days max
-- Marriage: 6 days max
+- Marriage: 3 days max
 - Replacement: Calculated from OT hours (8 hours = 1 day)
 - Unpaid: Unlimited
 

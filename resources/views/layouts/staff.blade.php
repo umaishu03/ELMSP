@@ -9,6 +9,7 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -163,7 +164,7 @@
                     <li>
                         <a href="{{ route('staff.payslip') }}" class="nav-item {{ request()->routeIs('staff.payslip') || request()->routeIs('staff.payslip.*') ? 'active' : '' }} flex items-center px-4 py-3 text-white rounded-lg">
                             <i class="fas fa-money-bill-wave mr-3"></i>
-                            <span>Payslip</span>
+                            <span>My Payslip</span>
                         </a>
                     </li>
                 </ul>

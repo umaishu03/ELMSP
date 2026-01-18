@@ -84,12 +84,12 @@ class Payroll extends Model
 
     /**
      * Calculate gross salary
-     * = basic_salary + fixed_commission + public_holiday_pay + fulltime_ot_pay + public_holiday_ot_pay
+     * = basic_salary + fixed_commission + marketing_bonus + public_holiday_pay + fulltime_ot_pay + public_holiday_ot_pay
      */
     public function calculateGrossSalary()
     {
-        return $this->basic_salary + $this->fixed_commission + ($this->marketing_bonus ?? 0) + $this->public_holiday_pay 
-            + $this->fulltime_ot_pay + $this->public_holiday_ot_pay;
+        return $this->basic_salary + $this->fixed_commission + ($this->marketing_bonus ?? 0)
+            + $this->public_holiday_pay + $this->fulltime_ot_pay + $this->public_holiday_ot_pay;
     }
 
     /**

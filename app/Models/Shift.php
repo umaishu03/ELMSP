@@ -14,6 +14,7 @@ class Shift extends Model
         'break_minutes',
         'rest_day',
         'leave_id',
+        'overtime_id',
     ];
 
     public function staff()
@@ -27,6 +28,14 @@ class Shift extends Model
     public function leave()
     {
         return $this->belongsTo(Leave::class, 'leave_id');
+    }
+
+    /**
+     * Relationship to Overtime (nullable)
+     */
+    public function overtime()
+    {
+        return $this->belongsTo(Overtime::class, 'overtime_id');
     }
 
     /**

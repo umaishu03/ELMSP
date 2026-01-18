@@ -84,8 +84,11 @@ class StaffController extends Controller
         // Get all users with their staff records, excluding seeded test users
         $excludedEmails = ['admin@gmail.com', 'staff@gmail.com'];
         $allUsers = User::with(['staff'])
-            ->whereNotIn('email', $excludedEmails)
-            ->orderBy('created_at', 'desc')
+            ->leftJoin('staff', 'users.id', '=', 'staff.user_id')
+            ->whereNotIn('users.email', $excludedEmails)
+            ->select('users.*')
+            ->orderByRaw('COALESCE(staff.employee_id, "") ASC')
+            ->orderBy('users.name', 'asc') // Secondary sort by name for users without employee_id
             ->get();
         
         // Get latest 5 users

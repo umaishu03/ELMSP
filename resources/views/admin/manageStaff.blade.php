@@ -269,6 +269,49 @@
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteStaffModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300" onclick="if(event.target === this) closeDeleteModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 transform transition-all scale-95" onclick="event.stopPropagation()">
+        <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-5 rounded-t-xl">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-white bg-opacity-25 rounded-full p-2.5 mr-3">
+                    <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white">Confirm Deletion</h2>
+            </div>
+        </div>
+        <div class="p-6">
+            <div class="flex items-start mb-6">
+                <div class="flex-shrink-0">
+                    <div class="flex items-center justify-center h-14 w-14 rounded-full bg-red-100 ring-4 ring-red-50">
+                        <i class="fas fa-trash-alt text-red-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="ml-4 flex-1 pt-1">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Delete Staff Member?</h3>
+                    <p class="text-sm text-gray-600 mb-2 leading-relaxed">
+                        Are you sure you want to delete <span id="deleteStaffName" class="font-semibold text-gray-900"></span>?
+                    </p>
+                    <div class="flex items-center text-sm text-red-600 font-medium bg-red-50 px-3 py-2 rounded-md">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span>This action cannot be undone.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button type="button" onclick="closeDeleteModal()" 
+                        class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium border border-gray-300">
+                    <i class="fas fa-times mr-2"></i>Cancel
+                </button>
+                <button type="button" id="confirmDeleteBtn" onclick="confirmDelete()"
+                        class="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95">
+                    <i class="fas fa-trash mr-2"></i>Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('csv_file');
@@ -383,6 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (event.key === 'Escape') {
             closeViewModal();
             closeEditModal();
+            closeDeleteModal();
         }
     });
     
@@ -445,32 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const userId = this.getAttribute('data-user-id');
             const userName = this.getAttribute('data-user-name');
-            
-            // Show confirmation dialog
-            if (confirm(`Are you sure you want to delete "${userName}"? This action cannot be undone.`)) {
-                // Create and submit delete form
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/admin/staff/${userId}`;
-                
-                // Add CSRF token
-                const csrfToken = document.createElement('input');
-                csrfToken.type = 'hidden';
-                csrfToken.name = '_token';
-                csrfToken.value = '{{ csrf_token() }}';
-                form.appendChild(csrfToken);
-                
-                // Add method override for DELETE
-                const methodField = document.createElement('input');
-                methodField.type = 'hidden';
-                methodField.name = '_method';
-                methodField.value = 'DELETE';
-                form.appendChild(methodField);
-                
-                // Submit form
-                document.body.appendChild(form);
-                form.submit();
-            }
+            openDeleteModal(userId, userName);
         });
     });
 });
@@ -706,7 +725,7 @@ function openEditModal(userId) {
                             </button>
                             <button type="submit" 
                                     class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-                                Update Staff
+                                Save Changes
                             </button>
                         </div>
                     </div>
@@ -723,6 +742,58 @@ function openEditModal(userId) {
 
 function closeEditModal() {
     document.getElementById('editStaffModal').classList.add('hidden');
+}
+
+// Delete Modal Functions
+let deleteUserId = null;
+
+function openDeleteModal(userId, userName) {
+    deleteUserId = userId;
+    const modal = document.getElementById('deleteStaffModal');
+    const modalContent = modal.querySelector('.transform');
+    const nameSpan = document.getElementById('deleteStaffName');
+    
+    nameSpan.textContent = `"${userName}"`;
+    modal.classList.remove('hidden');
+    
+    // Add animation
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteStaffModal');
+    modal.classList.add('hidden');
+    deleteUserId = null;
+}
+
+function confirmDelete() {
+    if (!deleteUserId) return;
+    
+    // Create and submit delete form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/staff/${deleteUserId}`;
+    
+    // Add CSRF token
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = '_token';
+    csrfToken.value = '{{ csrf_token() }}';
+    form.appendChild(csrfToken);
+    
+    // Add method override for DELETE
+    const methodField = document.createElement('input');
+    methodField.type = 'hidden';
+    methodField.name = '_method';
+    methodField.value = 'DELETE';
+    form.appendChild(methodField);
+    
+    // Submit form
+    document.body.appendChild(form);
+    form.submit();
 }
 
 function submitEditForm(event, userId) {

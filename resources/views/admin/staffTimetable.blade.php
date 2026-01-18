@@ -30,35 +30,35 @@
             </div>
         </div>
         <div class="bg-white rounded-lg shadow-lg overflow-x-auto max-w-full">
-            <table class="w-full table-fixed text-xs">
+            <table class="w-full text-xs">
                 <!-- Table Header -->
-                <thead class="bg-blue-50">
+                <thead class="bg-blue-50 sticky top-0 z-10">
                     <tr>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-left text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[120px] w-[120px]">
                             Name
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                            Dep
+                        <th class="px-3 py-3 text-left text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[130px] w-[130px]">
+                            Department
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Mon
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Tue
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Wed
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Thu
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Fri
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Sat
                         </th>
-                        <th class="px-3 py-2 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                             Sun
                         </th>
                     </tr>
@@ -83,8 +83,11 @@
                                 $key = $staffMember->user->id . '|' . $day;
                                 $shift = isset($shiftsByKey[$key]) ? $shiftsByKey[$key] : null;
                                 $leaveStatus = ($shift && $shift->leave) ? $shift->leave->status : null;
+                                $hasOvertime = ($shift && $shift->overtime && $shift->overtime->status === 'approved');
+                                $otHours = $hasOvertime ? $shift->overtime->hours : null;
+                                $isBeforeHireDate = $day < $staffMember->hire_date->format('Y-m-d');
                             @endphp
-                            <td class="px-2 py-1 cursor-pointer {{ ($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50') }} break-words" 
+                            <td class="px-2 py-1 cursor-pointer {{ $isBeforeHireDate ? 'bg-gray-300' : (($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50')) }} break-words" 
                                    data-user-id="{{ $staffMember->user->id }}" 
                                    data-date="{{ $day }}"
                                    data-shift-id="{{ $shift->id ?? '' }}"
@@ -94,7 +97,9 @@
                                    data-department="{{ $shift->staff->department ?? $staffMember->department ?? '' }}"
                                    data-rest_day="{{ $shift->rest_day ?? 0 }}"
                                    onclick="openEditShiftModal(this)">
-                                @if($shift && $leaveStatus === 'approved')
+                                @if($isBeforeHireDate)
+                                    <span class="text-white font-semibold">No Shift</span>
+                                @elseif($shift && $leaveStatus === 'approved')
                                     <span class="font-semibold text-red-600">LEAVE</span>
                                 @elseif($shift)
                                     @if(isset($shift->rest_day) && $shift->rest_day)
@@ -102,6 +107,9 @@
                                     @else
                                         {{ $shift->start_time }} - {{ $shift->end_time }}<br>
                                         <span class="text-xs text-gray-500">Break: {{ $shift->break_minutes ?? 0 }} min</span>
+                                        @if($hasOvertime && $otHours)
+                                            <br><span class="text-xs font-semibold text-purple-600">Overtime: {{ number_format($otHours, 1) }} hrs</span>
+                                        @endif
                                     @endif
                                 @else
                                     <span class="text-gray-400 italic">Add Shift</span>
@@ -189,8 +197,8 @@
                     <button type="button" class="day-toggle px-2 py-1 bg-blue-100 rounded text-xs font-semibold" data-day="sun">S</button>
                 </div>
             </div>
-            <button id="assignShiftsBtn" class="w-full mb-2 bg-blue-600 text-white py-2 rounded">+ ASSIGN SHIFTS</button>
-            <button id="assignEditBtn" class="w-full mb-2 bg-green-600 text-white py-2 rounded">✎ EDIT SHIFT</button>
+            <button id="assignShiftsBtn" class="w-full mb-2 bg-blue-600 text-white py-2 rounded"> Assign Shifts</button>
+            <button id="assignEditBtn" class="w-full mb-2 bg-green-600 text-white py-2 rounded"> Edit Shift</button>
             <input type="hidden" id="assignEditShiftId" value="">
             <div id="assignStatus" class="mt-2 text-sm text-gray-700"></div>
             <div id="toast" class="fixed top-6 right-6 z-50 px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 ease-in-out hidden">
@@ -942,6 +950,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
 
+                    // Collect unique user IDs from successful assignments
+                    const successfulUserIds = new Set();
+                    successItems.forEach(item => {
+                        const userId = item.resp.user_id || item.payload.user_id;
+                        if (userId) successfulUserIds.add(String(userId));
+                    });
+                    
+                    // Get staff names for successful assignments
+                    const assignedNames = Array.from(successfulUserIds).map(userId => {
+                        const user = users.find(u => String(u.id) === String(userId));
+                        return user ? user.name : `User ${userId}`;
+                    }).filter(name => name); // Remove any null/undefined names
+                    
+                    // Build names list for display
+                    let namesText = '';
+                    if (assignedNames.length > 0) {
+                        if (assignedNames.length <= 3) {
+                            namesText = assignedNames.join(', ');
+                        } else {
+                            namesText = assignedNames.slice(0, 3).join(', ') + ` and ${assignedNames.length - 3} more`;
+                        }
+                    }
+
                     if (failures.length > 0) {
                         console.error('Some shifts failed:', failures);
                         // Build readable failure messages
@@ -953,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                         showToast(
                             `Partially Successful: ${successItems.length} shifts assigned`,
-                            `${failures.length} shift(s) failed. Timetable updated.`,
+                            namesText ? `Assigned to: ${namesText}. ${failures.length} shift(s) failed.` : `${failures.length} shift(s) failed. Timetable updated.`,
                             'warning'
                         );
                         // Still show alert for detailed error info
@@ -963,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         showToast(
                             'Shifts Assigned Successfully!',
-                            `${successItems.length} shift(s) assigned. Timetable has been updated.`,
+                            namesText ? `${successItems.length} shift(s) assigned to: ${namesText}` : `${successItems.length} shift(s) assigned. Timetable has been updated.`,
                             'success'
                         );
                     }
@@ -1327,9 +1358,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     );
                 }
 
+                // Get staff name and shift time for success message
+                const userLookupForToast = users.find(u => String(u.id) === String(userIdToUse));
+                const staffName = userLookupForToast ? userLookupForToast.name : `User ${userIdToUse}`;
+                const shiftStartTime = shift.start_time || '';
+                const shiftEndTime = shift.end_time || '';
+                const shiftRestDay = (shift.rest_day !== undefined) ? shift.rest_day : false;
+                const shiftTime = shiftRestDay ? 'REST DAY' : `${shiftStartTime} - ${shiftEndTime}`;
+                
                 showToast(
                     'Shift Updated Successfully!',
-                    'The shift has been updated and the timetable refreshed.',
+                    `${staffName}'s shift updated to: ${shiftTime}`,
                     'success'
                 );
             } catch (err) {
@@ -1522,11 +1561,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     );
                 }
 
+                // Get staff name and shift time for success message
+                const userLookupForToast2 = users.find(u => String(u.id) === String(userIdToUse));
+                const staffName2 = userLookupForToast2 ? userLookupForToast2.name : `User ${userIdToUse}`;
+                const shiftStartTime2 = shift.start_time || '';
+                const shiftEndTime2 = shift.end_time || '';
+                const shiftRestDay2 = (shift.rest_day !== undefined) ? shift.rest_day : false;
+                const shiftTime2 = shiftRestDay2 ? 'REST DAY' : `${shiftStartTime2} - ${shiftEndTime2}`;
+
                 // close modal
                 document.getElementById('editShiftModal').classList.add('hidden');
                 showToast(
                     'Shift Saved Successfully!',
-                    'The shift has been saved and the timetable updated.',
+                    `${staffName2}'s shift updated to: ${shiftTime2}`,
                     'success'
                 );
             } catch (err) {

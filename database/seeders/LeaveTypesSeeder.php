@@ -14,7 +14,7 @@ class LeaveTypesSeeder extends Seeder
             ['type_name' => 'medical', 'description' => 'Medical leave', 'requires_approval' => 0, 'deduct_from_balance' => 1, 'max_days' => 14],
             ['type_name' => 'emergency', 'description' => 'Emergency leave', 'requires_approval' => 0, 'deduct_from_balance' => 1, 'max_days' => 7],
             ['type_name' => 'replacement', 'description' => 'Replacement leave from OT', 'requires_approval' => 1, 'deduct_from_balance' => 0, 'max_days' => null],
-            ['type_name' => 'marriage', 'description' => 'Marriage leave', 'requires_approval' => 0, 'deduct_from_balance' => 1, 'max_days' => 6],
+            ['type_name' => 'marriage', 'description' => 'Marriage leave', 'requires_approval' => 0, 'deduct_from_balance' => 1, 'max_days' => 3],
             ['type_name' => 'unpaid', 'description' => 'Unpaid leave', 'requires_approval' => 0, 'deduct_from_balance' => 0, 'max_days' => 10],
         ];
 

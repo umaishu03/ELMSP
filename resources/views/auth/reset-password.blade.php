@@ -41,6 +41,16 @@
                 </div>
             @endif
 
+            <!-- Display success message -->
+            @if (session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <p class="text-sm">{{ session('success') }}</p>
+                    </div>
+                </div>
+            @endif
+
             <!-- Email Field (read-only) -->
             <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -110,6 +120,18 @@
             </div>
         </form>
     </div>
+
+    <script>
+    // Redirect to login after showing success message
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(session('success'))
+            // Redirect to login after 3 seconds
+            setTimeout(function() {
+                window.location.href = '{{ route('login') }}';
+            }, 3000);
+        @endif
+    });
+    </script>
 </body>
 </html>
 

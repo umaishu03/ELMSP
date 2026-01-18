@@ -14,9 +14,6 @@ class OTClaim extends Model
     protected $fillable = [
         'claim_type',
         'ot_ids',
-        'overtime_id',
-        'leave_id',
-        'payroll_id',
         'fulltime_hours',
         'public_holiday_hours',
         'replacement_days',
@@ -37,30 +34,6 @@ class OTClaim extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Relation to a single overtime (when claim references one OT record)
-     */
-    public function overtime()
-    {
-        return $this->belongsTo(Overtime::class, 'overtime_id');
-    }
-
-    /**
-     * Relation to leave when claim is replacement
-     */
-    public function leave()
-    {
-        return $this->belongsTo(\App\Models\Leave::class, 'leave_id');
-    }
-
-    /**
-     * Relation to payroll when claim is for payroll
-     */
-    public function payroll()
-    {
-        return $this->belongsTo(\App\Models\Payroll::class, 'payroll_id');
     }
 
     /**

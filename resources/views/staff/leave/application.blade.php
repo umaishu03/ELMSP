@@ -34,31 +34,50 @@
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
 
-<div class="max-w-7xl mx-auto mt-8 mb-12">
-    <!-- Header Card -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-        <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-8 py-6">
-            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
-                <i class="fas fa-file-alt"></i>
-                Leave Application
-            </h1>
-            <p class="text-purple-100 mt-2">Submit your leave request with all required details</p>
+<!-- Title -->
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Leave Application</h1>
+    <p class="text-gray-600 flex items-center gap-2">
+        <i class="fas fa-file-alt text-blue-500"></i>
+        Submit your leave request with all required details
+    </p>
         </div>
         
+<div class="space-y-6">
         <!-- Important Note -->
-        <div class="px-8 py-6 bg-amber-50 border-l-4 border-amber-400">
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 bg-amber-50 border-l-4 border-amber-400">
             <div class="flex items-start gap-3">
                 <i class="fas fa-info-circle text-amber-600 text-xl mt-0.5"></i>
                 <div>
                     <p class="font-semibold text-amber-900 mb-1">Important Reminder</p>
                     <p class="text-amber-800">The replacement leave only can apply if the OT hours sufficient.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Application Rules -->
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 bg-blue-50 border-l-4 border-blue-400">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-clipboard-list text-blue-600 text-xl mt-0.5"></i>
+                <div class="flex-1">
+                    <p class="font-semibold text-blue-900 mb-2">Leave Application Rules</p>
+                    <ul class="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                        <li><strong>Weekly Limit:</strong> Maximum 2 leave days per week (excludes Emergency, Medical, Hospitalization)</li>
+                            <li><strong>Advance Notice:</strong> Submit at least 3 days in advance (all calendar days count, including weekends; excludes Emergency, Medical, Hospitalization)</li>
+                        <li><strong>Weekend Restriction:</strong> Normal leaves not allowed on weekends (Emergency, Medical with MC, and Hospitalization are exempt)</li>
+                        <li><strong>Medical Certificate:</strong> Required for Medical and Hospitalization leave</li>
+                        <li><strong>Department Quota:</strong> Per-day and per-week limits apply based on your department</li>
+                    </ul>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Quick Action Button -->
-    <div class="mb-6 flex justify-end">
+        <div class="flex justify-end">
         <a href="{{ route('staff.claimOt') }}" 
            class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-purple-600 font-semibold px-6 py-3 rounded-xl border-2 border-purple-600 shadow-sm hover:shadow-md transition-all duration-200">
             <i class="fas fa-exchange-alt"></i>
@@ -67,7 +86,7 @@
     </div>
 
     <!-- Main Form Card -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
         <div class="px-8 py-8">
             <form class="space-y-6" id="leaveApplicationForm" method="POST" action="{{ route('staff.leave-application.store') }}" enctype="multipart/form-data">
                 @csrf
@@ -209,15 +228,22 @@
                 <!-- Attachment -->
                 <div class="form-group">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        Attachment (Optional)
+                        Attachment <span id="attachmentRequired" class="text-red-500 hidden">*</span><span id="attachmentOptional" class="text-gray-500">(Optional)</span>
                     </label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-purple-400 transition-all bg-gray-50 @error('attachment') border-red-500 @enderror">
+                    <div id="mcWarning" class="hidden mb-3 px-4 py-3 bg-red-50 border-l-4 border-red-400 rounded-lg">
+                        <div class="flex items-start gap-2">
+                            <i class="fas fa-exclamation-triangle text-red-600 mt-0.5"></i>
+                            <p class="text-sm text-red-800"><strong>Medical Certificate Required:</strong> Medical and Hospitalization leave require a valid Medical Certificate (MC) for auto-approval.</p>
+                        </div>
+                    </div>
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-purple-400 transition-all bg-gray-50 @error('attachment') border-red-500 @enderror" id="attachmentContainer">
                         <div class="flex flex-col items-center gap-2">
                             <i class="fas fa-cloud-upload-alt text-4xl text-gray-400"></i>
                             <p class="text-sm font-medium text-gray-600">Upload supporting documents</p>
                             <p class="text-xs text-gray-500">PDF, JPG, PNG up to 10MB</p>
                             <input type="file" 
                                    name="attachment"
+                                   id="attachmentInput"
                                    class="mt-3 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer">
                         </div>
                     </div>
@@ -235,7 +261,7 @@
                     <button type="submit" 
                             class="flex-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-semibold py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2">
                         <i class="fas fa-paper-plane"></i>
-                        <span>Submit Application</span>
+                        <span>Submit</span>
                     </button>
                 </div>
             </form>
@@ -261,6 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Real leave balance data from controller
     const leaveBalance = {!! json_encode($leaveBalance ?? []) !!};
     const totalOTHours = {!! json_encode($totalOTHours ?? 0) !!};
+    const approvedOvertimeDates = {!! json_encode($approvedOvertimeDates ?? []) !!};
 
     // Define leave entitlements and data
     const leaveData = {
@@ -294,6 +321,106 @@ document.addEventListener('DOMContentLoaded', function() {
             unlimited: false
         }
     };
+
+    // Get references to attachment warning elements
+    const attachmentRequired = document.getElementById('attachmentRequired');
+    const attachmentOptional = document.getElementById('attachmentOptional');
+    const mcWarning = document.getElementById('mcWarning');
+    const attachmentContainer = document.getElementById('attachmentContainer');
+    const attachmentInput = document.getElementById('attachmentInput');
+
+    // Function to check for weekend dates
+    function checkWeekendDates() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const selectedOption = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+        const selectedType = selectedOption ? selectedOption.dataset.type : null;
+        
+        if (!startDate || !endDate || !selectedType) {
+            return;
+        }
+
+        const isExempt = ['emergency', 'medical', 'hospitalization'].includes(selectedType);
+        const hasMC = attachmentInput.files.length > 0;
+        const isMedicalWithMC = selectedType === 'medical' && hasMC;
+
+        if (isExempt || isMedicalWithMC) {
+            return; // Exempt from weekend restriction
+        }
+
+        const start = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDate + 'T00:00:00');
+        const weekendDates = [];
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dayOfWeek = d.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                weekendDates.push(new Date(d));
+            }
+        }
+
+        if (weekendDates.length > 0) {
+            const dateStr = weekendDates.map(d => d.toLocaleDateString()).join(', ');
+            alert(`Warning: Your leave period includes weekend dates (${dateStr}). Normal leave applications are not permitted on weekends. Only Emergency Leave, Medical Leave (with MC), and Hospitalization Leave are allowed on weekends.`);
+        }
+    }
+
+    // Function to check for overtime conflicts
+    function checkOvertimeConflict() {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const selectedOption = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+        const selectedType = selectedOption ? selectedOption.dataset.type : null;
+        
+        if (!startDate || !endDate || !selectedType) {
+            return;
+        }
+
+        // Exempt: Emergency, Medical, Hospitalization
+        const isExempt = ['emergency', 'medical', 'hospitalization'].includes(selectedType);
+        if (isExempt) {
+            return; // Exempt from overtime conflict check
+        }
+
+        if (!approvedOvertimeDates || approvedOvertimeDates.length === 0) {
+            return; // No approved overtime
+        }
+
+        const start = new Date(startDate + 'T00:00:00');
+        const end = new Date(endDate + 'T00:00:00');
+        const conflictingDates = [];
+
+        // Check each date in the leave period
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            if (approvedOvertimeDates.includes(dateStr)) {
+                conflictingDates.push(new Date(d));
+            }
+        }
+
+        if (conflictingDates.length > 0) {
+            const dateStr = conflictingDates.map(d => d.toLocaleDateString()).join(', ');
+            alert(`Warning: Your leave period includes dates where you have approved overtime (${dateStr}). Leave applications cannot be approved on the same date(s) as approved overtime. Please choose different dates or cancel your overtime first.`);
+        }
+    }
+
+    // Function to update MC requirement warning
+    function updateMCRequirement() {
+        const selectedOption = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+        const selectedType = selectedOption ? selectedOption.dataset.type : null;
+        
+        if (selectedType === 'medical' || selectedType === 'hospitalization') {
+            attachmentRequired.classList.remove('hidden');
+            attachmentOptional.classList.add('hidden');
+            mcWarning.classList.remove('hidden');
+            attachmentContainer.classList.add('border-red-300');
+        } else {
+            attachmentRequired.classList.add('hidden');
+            attachmentOptional.classList.remove('hidden');
+            mcWarning.classList.add('hidden');
+            attachmentContainer.classList.remove('border-red-300');
+        }
+    }
 
     // Handle leave type change
     leaveTypeSelect.addEventListener('change', function() {
@@ -347,6 +474,27 @@ document.addEventListener('DOMContentLoaded', function() {
             // Hide the entitlement card if no leave type selected
             entitlementCard.classList.add('hidden');
         }
+
+        // Update MC requirement
+        updateMCRequirement();
+    });
+
+    // Check weekend dates and overtime conflicts when dates change
+    startDateInput.addEventListener('change', function() {
+        calculateDays();
+        checkWeekendDates();
+        checkOvertimeConflict();
+    });
+    endDateInput.addEventListener('change', function() {
+        calculateDays();
+        checkWeekendDates();
+        checkOvertimeConflict();
+    });
+
+    // Update MC requirement when attachment changes
+    attachmentInput.addEventListener('change', function() {
+        updateMCRequirement();
+        checkWeekendDates(); // Re-check weekend restriction if medical leave
     });
 
     // Calculate days between dates

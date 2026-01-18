@@ -47,51 +47,59 @@ class StaffTimetableController extends Controller
         }
 
         /**
-         * AUTO-COPY: if this week has no shifts, copy previous week's shifts
+         * AUTO-COPY: if a staff member has no shifts this week, copy previous week's shifts
          * When copying, exclude overtime hours if the staff has OT that week
          */
-        $existingCount = \App\Models\Shift::whereIn('date', $dates)->count();
+        foreach ($staff as $staffMember) {
+            // Check if this staff has any shifts in current week
+            $staffShiftCount = \App\Models\Shift::where('staff_id', $staffMember->id)
+                ->whereIn('date', $dates)
+                ->count();
 
-        if ($existingCount == 0) {
-            $prevWeekStart = $weekStart->copy()->subWeek();
-            $prevDates = [];
-            for ($i = 0; $i < 7; $i++) {
-                $prevDates[] = $prevWeekStart->copy()->addDays($i)->format('Y-m-d');
-            }
-
-            $prevShifts = \App\Models\Shift::whereIn('date', $prevDates)->get();
-
-            foreach ($prevShifts as $old) {
-                $newDate = Carbon::parse($old->date)->addWeek()->format('Y-m-d');
-                
-                // Check if staff has approved overtime for this date
-                $overtime = \App\Models\Overtime::where('staff_id', $old->staff_id)
-                    ->where('ot_date', $old->date)
-                    ->where('status', 'approved')
-                    ->first();
-                
-                // Calculate base shift times (without OT hours)
-                $startTime = $old->start_time;
-                $endTime = $old->end_time;
-                
-                // If overtime exists and shift has times, subtract OT hours from end_time
-                if ($overtime && $overtime->hours && $startTime && $endTime) {
-                    $otHours = (float) $overtime->hours;
-                    $currentEndTime = Carbon::parse($endTime);
-                    
-                    // Subtract OT hours from end time to get base shift end time
-                    $baseEndTime = $currentEndTime->copy()->subHours($otHours);
-                    $endTime = $baseEndTime->format('H:i');
+            // Only copy if this staff has NO shifts this week
+            if ($staffShiftCount == 0) {
+                $prevWeekStart = $weekStart->copy()->subWeek();
+                $prevDates = [];
+                for ($i = 0; $i < 7; $i++) {
+                    $prevDates[] = $prevWeekStart->copy()->addDays($i)->format('Y-m-d');
                 }
 
-                \App\Models\Shift::create([
-                    'staff_id'      => $old->staff_id ?? null,
-                    'date'          => $newDate,
-                    'start_time'    => $startTime,
-                    'end_time'      => $endTime,
-                    'break_minutes' => $old->break_minutes,
-                    'rest_day'      => $old->rest_day,
-                ]);
+                $prevShifts = \App\Models\Shift::where('staff_id', $staffMember->id)
+                    ->whereIn('date', $prevDates)
+                    ->get();
+
+                foreach ($prevShifts as $old) {
+                    $newDate = Carbon::parse($old->date)->addWeek()->format('Y-m-d');
+                    
+                    // Check if staff has approved overtime for this date
+                    $overtime = \App\Models\Overtime::where('staff_id', $old->staff_id)
+                        ->where('ot_date', $old->date)
+                        ->where('status', 'approved')
+                        ->first();
+                    
+                    // Calculate base shift times (without OT hours)
+                    $startTime = $old->start_time;
+                    $endTime = $old->end_time;
+                    
+                    // If overtime exists and shift has times, subtract OT hours from end_time
+                    if ($overtime && $overtime->hours && $startTime && $endTime) {
+                        $otHours = (float) $overtime->hours;
+                        $currentEndTime = Carbon::parse($endTime);
+                        
+                        // Subtract OT hours from end time to get base shift end time
+                        $baseEndTime = $currentEndTime->copy()->subHours($otHours);
+                        $endTime = $baseEndTime->format('H:i');
+                    }
+
+                    \App\Models\Shift::create([
+                        'staff_id'      => $old->staff_id ?? null,
+                        'date'          => $newDate,
+                        'start_time'    => $startTime,
+                        'end_time'      => $endTime,
+                        'break_minutes' => $old->break_minutes,
+                        'rest_day'      => $old->rest_day,
+                    ]);
+                }
             }
         }
 
@@ -144,8 +152,8 @@ class StaffTimetableController extends Controller
             }
         }
 
-        // Get all shifts for this week (eager-load staff, user, and leave relation)
-        $shifts = \App\Models\Shift::whereIn('date', $dates)->with('staff.user', 'leave')->get();
+        // Get all shifts for this week (eager-load staff, user, leave, and overtime relation)
+        $shifts = \App\Models\Shift::whereIn('date', $dates)->with('staff.user', 'leave', 'overtime')->get();
 
         // Normalize shift->date to Y-m-d strings so view collection lookups by date work
         $shifts = $shifts->map(function($s) {
@@ -217,8 +225,8 @@ class StaffTimetableController extends Controller
         
         $users = \App\Models\User::where('role', 'staff')->get();
 
-        // Get all shifts for this week (eager-load staff, user, and leave relation)
-        $shifts = \App\Models\Shift::whereIn('date', $dates)->with('staff.user', 'leave')->get();
+        // Get all shifts for this week (eager-load staff, user, leave, and overtime relation)
+        $shifts = \App\Models\Shift::whereIn('date', $dates)->with('staff.user', 'leave', 'overtime')->get();
 
         // Normalize dates
         $shifts = $shifts->map(function($s) {

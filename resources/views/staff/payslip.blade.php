@@ -8,7 +8,6 @@
     {!! \App\Helpers\BreadcrumbHelper::render() !!} 
 </div>
 
-<div class="container mx-auto px-4 py-8">
     @if(session('success'))
         <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center gap-2">
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -27,8 +26,6 @@
     @endif
 
     <div class="mb-8">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
                 <h1 class="text-4xl font-bold text-gray-800 mb-2">My Payslip</h1>
                 <p class="text-gray-600 flex items-center gap-2">
                     <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,8 +33,6 @@
                     </svg>
                     View your payslips for previous months
                 </p>
-            </div>
-        </div>
     </div>
 
     {{-- Month Selection --}}
@@ -135,7 +130,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                         </svg>
-                        Download PDF
+                        Download
                     </button>
                 </div>
             </div>
@@ -155,7 +150,6 @@
             </svg>
             <p class="text-gray-700 text-lg font-semibold mb-2">Select a month to view your payslip</p>
             <p class="text-sm text-gray-600">Note: Payslips are only available for <span class="font-semibold text-blue-600">approved</span> or <span class="font-semibold text-blue-600">paid</span> payrolls</p>
-        </div>
     </div>
 </div>
 

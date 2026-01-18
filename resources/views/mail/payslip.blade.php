@@ -104,7 +104,15 @@
 <body>
     <div class="email-container">
         <div class="header">
-            <div class="company-name">ELMSP</div>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <img src="data:image/webp;base64,{{ base64_encode(file_get_contents(public_path('images/sheikh bistro logo.webp'))) }}" alt="Sheikh Bistro" style="max-height: 60px; width: auto;">
+                <div style="font-size: 12px; color: #4b5563; margin-top: 10px; line-height: 1.6;">
+                    <strong>Sheikh Bistro</strong><br>
+                    Cawangan Bukit Tambun (Pearl City Mall)<br>
+                    Bandar Tasek Mutiara, 14120 Simpang Ampat,<br>
+                    Pulau Pinang
+                </div>
+            </div>
             <div class="email-title">Your Payslip for {{ \Carbon\Carbon::create($month)->format('F Y') }}</div>
         </div>
 
@@ -162,7 +170,7 @@
         </div>
 
         <div class="footer">
-            <p><strong>ELMSP - Employee Management System</strong></p>
+            <p><strong>Sheikh Bistro - Payroll System</strong></p>
             <p>This is an automated email. Please do not reply to this message.</p>
             <p style="margin-top: 10px; font-size: 11px;">
                 Generated on {{ now()->format('d M Y, h:i A') }}

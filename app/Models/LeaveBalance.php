@@ -19,6 +19,12 @@ class LeaveBalance extends Model
         'remaining_days',
     ];
 
+    protected $casts = [
+        'total_days' => 'float',
+        'used_days' => 'float',
+        'remaining_days' => 'float',
+    ];
+
     public function staff()
     {
         return $this->belongsTo(\App\Models\Staff::class, 'staff_id');

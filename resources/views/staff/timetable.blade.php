@@ -28,33 +28,33 @@
 <div class="bg-white rounded-lg shadow-lg overflow-x-auto">
     <table class="min-w-full text-xs">
 <!-- Table Header -->
-        <thead class="bg-purple-50">
+        <thead class="bg-purple-50 sticky top-0 z-10">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[120px] w-[120px]">
                     Staff Name
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-left text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[130px] w-[130px]">
                     Department
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Mon
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Tue
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Wed
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Thu
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Fri
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Sat
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-purple-800 uppercase tracking-wider">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Sun
                 </th>
             </tr>
@@ -70,9 +70,14 @@
                         $key = $staffMember->user->id . '|' . $day;
                         $shift = isset($shiftsByKey[$key]) ? $shiftsByKey[$key] : null;
                         $leaveStatus = ($shift && $shift->leave) ? $shift->leave->status : null;
+                        $hasOvertime = ($shift && $shift->overtime && $shift->overtime->status === 'approved');
+                        $otHours = $hasOvertime ? $shift->overtime->hours : null;
+                        $isBeforeHireDate = $day < $staffMember->hire_date->format('Y-m-d');
                     @endphp
-                    <td class="px-2 py-2 {{ ($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50') }}">
-                        @if($shift && $leaveStatus === 'approved')
+                    <td class="px-2 py-2 {{ $isBeforeHireDate ? 'bg-gray-300' : (($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50')) }}">
+                        @if($isBeforeHireDate)
+                            <span class="text-white font-semibold">No Shift</span>
+                        @elseif($shift && $leaveStatus === 'approved')
                             <span class="font-semibold text-red-600">LEAVE</span>
                         @elseif($shift)
                             @if(isset($shift->rest_day) && $shift->rest_day)
@@ -80,6 +85,9 @@
                             @else
                                 {{ $shift->start_time }} - {{ $shift->end_time }}<br>
                                 <span class="text-xs text-gray-500">Break: {{ $shift->break_minutes ?? 0 }} min</span>
+                                @if($hasOvertime && $otHours)
+                                    <br><span class="text-xs font-semibold text-purple-600">Overtime: {{ number_format($otHours, 1) }} hrs</span>
+                                @endif
                             @endif
                         @else
                             <span class="text-gray-400 italic">No Shift</span>

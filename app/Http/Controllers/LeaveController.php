@@ -16,13 +16,24 @@ class LeaveController extends Controller
         $staff = $user->staff;
         $staffId = $staff ? $staff->id : null;
 
-        // Get user's approved OT hours for replacement leave calculation via payroll relation
-        $approvedOTClaims = OTClaim::whereHas('payroll', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })
-            ->where('claim_type', 'payroll')
-            ->approved()
-            ->get();
+        // Get user's approved OT hours for replacement leave calculation via ot_ids
+        $approvedOTClaims = collect();
+        if ($staffId) {
+            $overtimeIds = \App\Models\Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+            if (!empty($overtimeIds)) {
+                $allPayrollClaims = OTClaim::where('claim_type', 'payroll')
+                    ->approved()
+                    ->get();
+                
+                $approvedOTClaims = $allPayrollClaims->filter(function($claim) use ($overtimeIds) {
+                    $claimOtIds = $claim->ot_ids ?? [];
+                    if (is_string($claimOtIds)) {
+                        $claimOtIds = json_decode($claimOtIds, true) ?? [];
+                    }
+                    return !empty(array_intersect($overtimeIds, $claimOtIds));
+                });
+            }
+        }
 
         $totalOTHours = $approvedOTClaims->sum(function($claim) {
             return ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
@@ -117,19 +128,55 @@ class LeaveController extends Controller
                         'balance' => $balance,
                     ];
                 } else {
-                $leaveBalance[$typeName] = [
-                    'max' => (float)$b->total_days,
-                    'taken' => (float)$b->used_days,
-                    'balance' => (float)$b->remaining_days,
-                ];
+                    // Recalculate taken from actual approved leaves to ensure accuracy
+                    // This prevents negative values from incorrect total_days calculations
+                    $leaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower($typeName)])->first();
+                    $taken = 0;
+                    if ($leaveType) {
+                        $taken = Leave::where('staff_id', $staffId)
+                            ->where('leave_type_id', $leaveType->id)
+                            ->where('status', 'approved')
+                            ->get()
+                            ->sum(function($leave) {
+                                // Recalculate days if total_days is invalid
+                                if ($leave->total_days <= 0 && $leave->start_date && $leave->end_date) {
+                                    $startDate = Carbon::parse($leave->start_date)->startOfDay();
+                                    $endDate = Carbon::parse($leave->end_date)->startOfDay();
+                                    return abs($endDate->diffInDays($startDate)) + 1;
+                                }
+                                return max(0, $leave->total_days);
+                            });
+                    }
+                    $max = (float)$b->total_days;
+                    $taken = max(0, (float)$taken); // Ensure taken is never negative
+                    $balance = max(0, $max - $taken);
+                    $leaveBalance[$typeName] = [
+                        'max' => $max,
+                        'taken' => $taken,
+                        'balance' => $balance,
+                    ];
                 }
             } else {
                 $leaveBalance[$typeName] = $computeFallback($typeName);
             }
         }
 
+        // Get approved overtime dates for conflict checking
+        $approvedOvertimeDates = [];
+        if ($staffId) {
+            $approvedOvertimes = \App\Models\Overtime::where('staff_id', $staffId)
+                ->where('status', 'approved')
+                ->get();
+            
+            $approvedOvertimeDates = $approvedOvertimes->pluck('ot_date')
+                ->map(function($date) {
+                    return $date->format('Y-m-d');
+                })
+                ->toArray();
+        }
+
         $leaveTypes = \App\Models\LeaveType::orderBy('type_name')->get();
-        return view('staff.leave.application', compact('leaveBalance', 'totalOTHours', 'leaveTypes'));
+        return view('staff.leave.application', compact('leaveBalance', 'totalOTHours', 'leaveTypes', 'approvedOvertimeDates'));
     }
 
     public function status()
@@ -155,13 +202,24 @@ class LeaveController extends Controller
                 ->keyBy(fn($b) => strtolower($b->leaveType->type_name));
         }
 
-        // compute OT hours for replacement fallback via payroll relation
-        $approvedOTClaims = OTClaim::whereHas('payroll', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })
-            ->where('claim_type', 'payroll')
-            ->approved()
-            ->get();
+        // compute OT hours for replacement fallback via ot_ids
+        $approvedOTClaims = collect();
+        if ($staffId) {
+            $overtimeIds = \App\Models\Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+            if (!empty($overtimeIds)) {
+                $allPayrollClaims = OTClaim::where('claim_type', 'payroll')
+                    ->approved()
+                    ->get();
+                
+                $approvedOTClaims = $allPayrollClaims->filter(function($claim) use ($overtimeIds) {
+                    $claimOtIds = $claim->ot_ids ?? [];
+                    if (is_string($claimOtIds)) {
+                        $claimOtIds = json_decode($claimOtIds, true) ?? [];
+                    }
+                    return !empty(array_intersect($overtimeIds, $claimOtIds));
+                });
+            }
+        }
         $totalOTHours = $approvedOTClaims->sum(function($claim) {
             return ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
         });
@@ -238,11 +296,33 @@ class LeaveController extends Controller
                         'balance' => $balance,
                     ];
                 } else {
-                $leaveBalance[$typeName] = [
-                    'max' => (float)$b->total_days,
-                    'taken' => (float)$b->used_days,
-                    'balance' => (float)$b->remaining_days,
-                ];
+                    // Recalculate taken from actual approved leaves to ensure accuracy
+                    // This prevents negative values from incorrect total_days calculations
+                    $leaveType = \App\Models\LeaveType::whereRaw('LOWER(type_name) = ?', [strtolower($typeName)])->first();
+                    $taken = 0;
+                    if ($leaveType) {
+                        $taken = Leave::where('staff_id', $staffId)
+                            ->where('leave_type_id', $leaveType->id)
+                            ->where('status', 'approved')
+                            ->get()
+                            ->sum(function($leave) {
+                                // Recalculate days if total_days is invalid
+                                if ($leave->total_days <= 0 && $leave->start_date && $leave->end_date) {
+                                    $startDate = Carbon::parse($leave->start_date)->startOfDay();
+                                    $endDate = Carbon::parse($leave->end_date)->startOfDay();
+                                    return abs($endDate->diffInDays($startDate)) + 1;
+                                }
+                                return max(0, $leave->total_days);
+                            });
+                    }
+                    $max = (float)$b->total_days;
+                    $taken = max(0, (float)$taken); // Ensure taken is never negative
+                    $balance = max(0, $max - $taken);
+                    $leaveBalance[$typeName] = [
+                        'max' => $max,
+                        'taken' => $taken,
+                        'balance' => $balance,
+                    ];
                 }
             } else {
                 $leaveBalance[$typeName] = $this->getLeaveBalance($staffId, $typeName);
@@ -257,7 +337,38 @@ class LeaveController extends Controller
             'rejected' => $leaveApplications->where('status', 'rejected')->count(),
         ];
 
-        return view('staff.leave.status', compact('leaveApplications', 'leaveBalance', 'stats'));
+        // Pass leave applications with rejection_reason for JSON encoding
+        $leaveApplicationsForJson = $leaveApplications->map(function($leave) {
+            $typeName = $leave->leaveType?->type_name ?? null;
+            
+            // Recalculate days if total_days is invalid (negative or zero when dates exist)
+            $days = $leave->total_days;
+            if ($days <= 0 && $leave->start_date && $leave->end_date) {
+                $startDate = Carbon::parse($leave->start_date)->startOfDay();
+                $endDate = Carbon::parse($leave->end_date)->startOfDay();
+                $days = abs($endDate->diffInDays($startDate)) + 1;
+            }
+            
+            return [
+                'id' => $leave->id,
+                'leaveType' => $typeName,
+                'leaveTypeName' => $typeName ? ucfirst(str_replace('_', ' ', $typeName)) : null,
+                'startDate' => $leave->start_date,
+                'endDate' => $leave->end_date,
+                'days' => $days,
+                'reason' => $leave->reason,
+                'status' => $leave->status,
+                'appliedDate' => $leave->created_at->format('Y-m-d'),
+                'autoApproved' => $leave->auto_approved ?? false,
+                'approvedDate' => $leave->approved_at ? $leave->approved_at->format('Y-m-d') : null,
+                'remarks' => $leave->remarks ?? null,
+                'rejectionReason' => $leave->rejection_reason,
+                'attachment' => $leave->attachment ? route('staff.leave.attachment', $leave->id) : null,
+                'attachmentName' => $leave->attachment ? basename($leave->attachment) : null
+            ];
+        });
+
+        return view('staff.leave.status', compact('leaveApplications', 'leaveBalance', 'stats', 'leaveApplicationsForJson'));
     }
 
     public function store(Request $request)
@@ -273,6 +384,12 @@ class LeaveController extends Controller
             'attachment' => 'nullable|file|mimes:pdf,jpg,png|max:10240',
         ]);
 
+        // Map user to staff first
+        $staff = $user->staff;
+        if (!$staff) {
+            return back()->with('error', 'Staff record not found for user');
+        }
+
         // Calculate total days
         // Normalize both dates to start of day to avoid time component issues
         $startDate = Carbon::parse($validated['start_date'])->startOfDay();
@@ -280,18 +397,27 @@ class LeaveController extends Controller
         // diffInDays returns the number of days between dates (exclusive)
         // For same date: diffInDays = 0, +1 = 1 day (correct)
         // For consecutive dates: diffInDays = 1, +1 = 2 days (correct)
-        $totalDays = $endDate->diffInDays($startDate) + 1;
+        // Use abs() to ensure positive value and ensure endDate >= startDate
+        $totalDays = abs($endDate->diffInDays($startDate)) + 1;
 
         // Get OT hours for replacement leave
         $otHours = 0;
         // Determine if selected type is replacement
         $selectedLeaveType = \App\Models\LeaveType::find($validated['leave_type_id']);
         if ($selectedLeaveType && strtolower($selectedLeaveType->type_name) === 'replacement') {
-            $otClaims = OTClaim::whereHas('payroll', function($q) use ($user) {
-                    $q->where('user_id', $user->id);
-                })
-                ->approved()
-                ->get();
+            $otClaims = collect();
+            $overtimeIds = \App\Models\Overtime::where('staff_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($overtimeIds)) {
+                $allPayrollClaims = OTClaim::approved()->get();
+                
+                $otClaims = $allPayrollClaims->filter(function($claim) use ($overtimeIds) {
+                    $claimOtIds = $claim->ot_ids ?? [];
+                    if (is_string($claimOtIds)) {
+                        $claimOtIds = json_decode($claimOtIds, true) ?? [];
+                    }
+                    return !empty(array_intersect($overtimeIds, $claimOtIds));
+                });
+            }
             $otHours = $otClaims->sum(function($claim) {
                 return ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
             });
@@ -301,12 +427,6 @@ class LeaveController extends Controller
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store('leaves', 'public');
-        }
-
-        // Map user to staff and create leave record
-        $staff = $user->staff;
-        if (!$staff) {
-            return back()->with('error', 'Staff record not found for user');
         }
 
         $leave = Leave::create([
@@ -320,6 +440,13 @@ class LeaveController extends Controller
         ]);
 
         // The auto-approval happens in the model's booted method automatically
+        // Refresh to get the updated status and rejection_reason
+        $leave->refresh();
+
+        if ($leave->status === 'rejected') {
+            return redirect()->route('staff.leave-status')
+                ->with('error', 'Leave request was rejected: ' . ($leave->rejection_reason ?? 'Unknown reason'));
+        }
 
         return redirect()->route('staff.leave-status')->with('success', "Leave request submitted! Status: " . ucfirst($leave->status));
     }
@@ -424,8 +551,15 @@ class LeaveController extends Controller
             return ['max' => 0, 'taken' => 0, 'balance' => 0];
         }
 
-        $otClaims = OTClaim::whereHas('payroll', function($q) use ($staff) {
-                $q->where('user_id', $staff->user->id);
+        // Get OT claims via ot_ids matching
+        $overtimeIds = \App\Models\Overtime::where('staff_id', $staffId)->pluck('id')->toArray();
+        $allOtClaims = OTClaim::approved()->get();
+        $otClaims = $allOtClaims->filter(function($claim) use ($overtimeIds) {
+                $claimOtIds = $claim->ot_ids ?? [];
+                if (is_string($claimOtIds)) {
+                    $claimOtIds = json_decode($claimOtIds, true) ?? [];
+                }
+                return !empty(array_intersect($overtimeIds, $claimOtIds));
             })
             ->approved()
             ->get();

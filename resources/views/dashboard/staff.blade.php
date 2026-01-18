@@ -21,6 +21,9 @@ $overtimeApproved = true; // Assume true for design demonstration
 <?php
 use App\Models\Overtime;
 use App\Models\OTClaim;
+use App\Models\Leave;
+use App\Models\LeaveBalance;
+use Carbon\Carbon;
 
 // Approved overtime (summary and full list)
 $staff = $user->staff;
@@ -32,7 +35,6 @@ $approvedOT = $staffId ? Overtime::where('staff_id', $staffId)
 $approvedCount = $approvedOT->count();
 
 // Salary / OT claims (recent) - query payroll claims for this staff
-$staffId = $staff ? $staff->id : null;
 $salaryClaims = collect();
 if ($staffId) {
     // Get all overtime IDs for this staff
@@ -76,16 +78,133 @@ if ($staffId) {
             }
             return !empty(array_intersect($overtimeIds, $claimOtIds));
         })->values();
-        
-        // Load leave relationship for claims that have it
-        $replacementLeaveClaims->load('leave');
     }
 }
+
+// ===== ANALYTICS DATA PREPARATION FOR CHARTS =====
+
+// 1. Personal Leave Balance Data (Used vs Remaining by type)
+$leaveBalanceData = [];
+$leaveBalanceLabels = [];
+if ($staffId) {
+    // Get all leave types available for this staff
+    $leavesByType = Leave::where('staff_id', $staffId)
+        ->where('status', 'approved')
+        ->with('leaveType')
+        ->get()
+        ->groupBy('leave_type_id');
+    
+    // Get LeaveBalance for comparison
+    $leaveBalances = \App\Models\LeaveBalance::where('staff_id', $staffId)
+        ->with('leaveType')
+        ->get()
+        ->keyBy('leave_type_id');
+    
+    // Merge both sources - prefer LeaveBalance but validate against Leave records
+    foreach ($leavesByType as $typeId => $leaves) {
+        $firstLeave = $leaves->first();
+        if ($firstLeave->leaveType) {
+            $typeName = $firstLeave->leaveType->type_name ?? 'Unknown';
+            
+            // Calculate used days from Leave records
+            $usedDays = $leaves->sum(function($leave) {
+                return $leave->start_date->diffInDays($leave->end_date) + 1;
+            });
+            
+            // Get balance data if available
+            $balance = $leaveBalances->get($typeId);
+            
+            if ($balance) {
+                // Use LeaveBalance data when available
+                $total = floatval($balance->total_days ?? 0);
+                $storedRemaining = floatval($balance->remaining_days ?? 0);
+                $storedUsed = floatval($balance->used_days ?? 0);
+                
+                // If total is 0 or seems wrong, recalculate from stored values
+                if ($total == 0 || $total < $storedUsed + $storedRemaining) {
+                    $total = $storedUsed + $storedRemaining;
+                }
+                
+                $remaining = $storedRemaining > 0 ? $storedRemaining : ($total - $storedUsed);
+                $used = $storedUsed;
+            } else {
+                // Fallback: use Leave record calculations
+                $used = floatval($usedDays);
+                $remaining = 0;
+                $total = floatval($usedDays);
+            }
+            
+            $leaveBalanceLabels[] = ucfirst($typeName);
+            $leaveBalanceData[] = [
+                'used' => $used,
+                'remaining' => $remaining,
+                'total' => $total > 0 ? $total : ($used + $remaining)
+            ];
+        }
+    }
+    
+    // Also add LeaveBalance entries that don't have Leave records yet
+    foreach ($leaveBalances as $typeId => $balance) {
+        if (!$leavesByType->has($typeId) && $balance->leaveType) {
+            $typeName = $balance->leaveType->type_name ?? 'Unknown';
+            $used = floatval($balance->used_days ?? 0);
+            $total = floatval($balance->total_days ?? 0);
+            $remaining = floatval($balance->remaining_days ?? 0);
+            
+            if ($remaining == 0 && $total > 0) {
+                $remaining = $total - $used;
+            }
+            
+            $leaveBalanceLabels[] = ucfirst($typeName);
+            $leaveBalanceData[] = [
+                'used' => $used,
+                'remaining' => $remaining,
+                'total' => $total > 0 ? $total : ($used + $remaining)
+            ];
+        }
+    }
+}
+
+// 2. Monthly Overtime Trend (Last 6 months)
+$monthlyOTData = [];
+$monthLabels = [];
+if ($staffId) {
+    $now = Carbon::now();
+    for ($i = 5; $i >= 0; $i--) {
+        $month = $now->copy()->subMonths($i);
+        $monthStart = $month->copy()->startOfMonth();
+        $monthEnd = $month->copy()->endOfMonth();
+        
+        $totalHours = Overtime::where('staff_id', $staffId)
+            ->whereBetween('ot_date', [$monthStart, $monthEnd])
+            ->where('status', 'approved')
+            ->sum('hours');
+        
+        $monthlyOTData[] = $totalHours ?? 0;
+        $monthLabels[] = $month->format('M');
+    }
+}
+
+// 3. Leave Application Status (Personal)
+$leaveStatus = [];
+if ($staffId) {
+    $leaveStatus = [
+        'approved' => Leave::where('staff_id', $staffId)->where('status', 'approved')->count() ?? 0,
+        'rejected' => Leave::where('staff_id', $staffId)->where('status', 'rejected')->count() ?? 0
+    ];
+}
+
+// 4. OT Claims Status
+$otClaimsStatus = [
+    'approved' => $salaryClaims->where('status', 'approved')->count() ?? 0,
+    'pending' => $salaryClaims->where('status', 'pending')->count() ?? 0,
+    'rejected' => $salaryClaims->where('status', 'rejected')->count() ?? 0
+];
 ?>
 
 <div class="mb-6">
     <h1 class="text-4xl font-extrabold text-purple-700">
-        {{ $greeting }}, {{ $user->name }}!
+        {{ $greeting }}, {{ explode(' ', $user->name)[0] }}!
     </h1>
     <p class="text-gray-600 mt-1">Welcome back to your Staff Dashboard. Here are your latest updates.</p>
 </div>
@@ -106,8 +225,8 @@ if ($staffId) {
 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-6 notification-cards">
     <!-- User Information Card -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
-        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-4 md:px-6 py-3 md:py-4">
-            <h2 class="text-base md:text-lg font-bold text-white">👤 User Information</h2>
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);" class="px-4 md:px-6 py-3 md:py-4">
+            <h2 class="text-base md:text-lg font-bold text-white">User Information</h2>
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-1 md:space-y-2">
@@ -129,16 +248,18 @@ if ($staffId) {
 
     <!-- Overtime Request Approved Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
-        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-4 md:px-6 py-3 md:py-4">
             <div class="flex items-center space-x-2">
                 <svg class="w-4 md:w-5 h-4 md:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <h2 class="text-sm md:text-lg font-bold text-white">Overtime Approved</h2>
+                <h2 class="text-sm md:text-lg font-bold text-white flex items-center gap-2">
+                    <span>Overtime Approved</span>
+                    <span class="bg-white text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
+                        {{ $approvedCount }}
+                    </span>
+                </h2>
             </div>
-            <span class="bg-white text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
-                 {{ $approvedCount }}
-            </span>
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
@@ -167,16 +288,18 @@ if ($staffId) {
 
     <!-- Salary Claims Status Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
-        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" class="px-4 md:px-6 py-3 md:py-4">
             <div class="flex items-center space-x-2">
                 <svg class="w-4 md:w-5 h-4 md:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <h2 class="text-sm md:text-lg font-bold text-white">Salary Claims</h2>
+                <h2 class="text-sm md:text-lg font-bold text-white flex items-center gap-2">
+                    <span>Salary Claims</span>
+                    <span class="bg-white text-green-600 text-xs font-bold px-2.5 py-1 rounded-full" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
+                        {{ $salaryClaims->count() }}
+                    </span>
+                </h2>
             </div>
-            <span class="bg-white text-green-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
-                {{ $salaryClaims->count() }}
-            </span>
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
@@ -184,18 +307,22 @@ if ($staffId) {
                 @php
                     $amounts = $claim->calculatePayrollAmounts();
                     $totalPay = $amounts['total_pay'] ?? 0;
-                    $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
+                    $status = strtolower($claim->status ?? 'pending');
+                    $isApproved = $status === 'approved';
+                    $isRejected = $status === 'rejected';
                 @endphp
-                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : 'bg-green-50' }} rounded hover:bg-green-100 transition cursor-pointer text-xs md:text-sm">
-                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
+                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : ($isRejected ? 'bg-red-50 border border-red-200' : 'bg-green-50') }} rounded {{ $isApproved ? 'hover:bg-green-100' : ($isRejected ? 'hover:bg-red-100' : 'hover:bg-green-100') }} transition cursor-pointer text-xs md:text-sm">
+                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : ($isRejected ? 'bg-red-500' : 'bg-green-500') }} rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <p class="font-semibold text-gray-800 truncate">{{ $claim->created_at->format('F Y') }} - RM {{ number_format($totalPay, 2) }}</p>
                             @if($isApproved)
                             <span class="bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded">✓ Approved</span>
+                            @elseif($isRejected)
+                            <span class="bg-red-100 text-red-800 text-xs font-semibold px-1.5 py-0.5 rounded">✗ Rejected</span>
                             @endif
                         </div>
-                        <p class="text-xs text-gray-500">{{ ucfirst($claim->status ?? 'pending') }} • {{ $claim->updated_at->diffForHumans() }}</p>
+                        <p class="text-xs {{ $isRejected ? 'text-red-600' : 'text-gray-500' }}">{{ ucfirst($claim->status ?? 'pending') }} • {{ $claim->updated_at->diffForHumans() }}</p>
                     </div>
                 </div>
                 @empty
@@ -213,22 +340,23 @@ if ($staffId) {
 
     <!-- Replacement Leave Claims Approved Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
-        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);" class="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);" class="px-4 md:px-6 py-3 md:py-4">
             <div class="flex items-center space-x-2">
                 <svg class="w-4 md:w-5 h-4 md:h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
-                <h2 class="text-sm md:text-lg font-bold text-white">Replacement Leave</h2>
+                <h2 class="text-sm md:text-lg font-bold text-white flex items-center gap-2">
+                    <span>Replacement Leave</span>
+                    <span class="bg-white text-purple-600 text-xs font-bold px-2.5 py-1 rounded-full" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
+                        {{ $replacementLeaveClaims->count() }}
+                    </span>
+                </h2>
             </div>
-            <span class="bg-white text-purple-600 text-xs font-bold px-2.5 py-1 rounded-full w-fit" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
-                {{ $replacementLeaveClaims->count() }}
-            </span>
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
                 @forelse($replacementLeaveClaims->take(2) as $claim)
                 @php
-                    $leave = $claim->leave;
                     $replacementDays = $claim->replacement_days ?? 0;
                     $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
                 @endphp
@@ -237,11 +365,7 @@ if ($staffId) {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <p class="font-semibold text-gray-800 truncate">
-                                @if($leave)
-                                    {{ $leave->start_date->format('M d') }} - {{ number_format($replacementDays, 1) }} days
-                                @else
-                                    {{ number_format($replacementDays, 1) }} days Replacement
-                                @endif
+                                {{ number_format($replacementDays, 1) }} days Replacement
                             </p>
                             @if($isApproved)
                             <span class="bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded">✓ Approved</span>
@@ -334,9 +458,11 @@ if ($staffId) {
         <div class="divide-y divide-gray-200">
             @forelse($salaryClaims as $claim)
             @php
-                $isApproved = strtolower($claim->status ?? 'pending') === 'approved';
-                $bgColor = $isApproved ? 'bg-green-50' : 'bg-green-50';
-                $borderColor = $isApproved ? 'border-green-500' : 'border-green-300';
+                $status = strtolower($claim->status ?? 'pending');
+                $isApproved = $status === 'approved';
+                $isRejected = $status === 'rejected';
+                $bgColor = $isApproved ? 'bg-green-50' : ($isRejected ? 'bg-red-50' : 'bg-green-50');
+                $borderColor = $isApproved ? 'border-green-500' : ($isRejected ? 'border-red-500' : 'border-green-300');
             @endphp
             <div class="p-6 {{ $bgColor }} border-l-4 {{ $borderColor }}">
                 <div class="flex items-start justify-between">
@@ -418,7 +544,6 @@ if ($staffId) {
         <div class="divide-y divide-gray-200">
             @forelse($replacementLeaveClaims as $claim)
             @php
-                $leave = $claim->leave;
                 $replacementDays = $claim->replacement_days ?? 0;
                 $totalHours = ($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0);
             @endphp
@@ -430,11 +555,7 @@ if ($staffId) {
                             <span class="text-xs text-gray-500">{{ $claim->updated_at->diffForHumans() }}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 mb-2">
-                            @if($leave)
-                                Replacement Leave - {{ $leave->start_date->format('F d, Y') }}
-                            @else
-                                Replacement Leave Claim
-                            @endif
+                            Replacement Leave Claim
                         </h3>
                         <div class="grid grid-cols-3 gap-4 mb-3">
                             <div>
@@ -460,28 +581,107 @@ if ($staffId) {
                                 </p>
                             </div>
                         </div>
-                        @if($leave)
-                        <div class="bg-white p-3 rounded border border-purple-200 text-sm">
-                            <p class="text-gray-700">
-                                <span class="font-semibold">Leave Period:</span> 
-                                {{ $leave->start_date->format('M d, Y') }} 
-                                @if($leave->end_date && $leave->end_date != $leave->start_date)
-                                    to {{ $leave->end_date->format('M d, Y') }}
-                                @endif
-                            </p>
-                            @if($leave->reason)
-                            <p class="text-gray-700 mt-2">
-                                <span class="font-semibold">Reason:</span> {{ Illuminate\Support\Str::limit($leave->reason, 100) }}
-                            </p>
-                            @endif
-                        </div>
-                        @endif
                     </div>
                 </div>
             </div>
             @empty
             <div class="p-6 text-sm text-gray-600">No approved replacement leave claims found.</div>
             @endforelse
+        </div>
+    </div>
+</div>
+
+<!-- Analytics & Charts Section -->
+<div class="mt-12">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Your Analytics</h2>
+    
+    <!-- Leave Analytics -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+        <div class="bg-gray-100 px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                Leave Insights
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Leave Balance Chart -->
+                <div class="bg-white rounded-lg p-6 border border-gray-200">
+                    <h4 class="text-md font-bold text-gray-800 mb-4">Leave Balance by Type</h4>
+                    <p class="text-sm text-gray-600 mb-3">Used vs Remaining leave days</p>
+                    <div style="height: 280px;">
+                        <canvas id="leaveBalanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Leave Application Status -->
+                <div class="bg-white rounded-lg p-6 border border-gray-200">
+                    <h4 class="text-md font-bold text-gray-800 mb-4">Leave Request Status</h4>
+                    <p class="text-sm text-gray-600 mb-3">Overview of your leave applications</p>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <p class="text-xs text-gray-600 mb-1">Approved</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $leaveStatus['approved'] ?? 0 }}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <p class="text-xs text-gray-600 mb-1">Rejected</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $leaveStatus['rejected'] ?? 0 }}</p>
+                        </div>
+                    </div>
+                    <div style="height: 200px;">
+                        <canvas id="leaveStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overtime Analytics -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+        <div class="bg-gray-100 px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Overtime Insights
+            </h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Monthly OT Trend -->
+                <div class="bg-white rounded-lg p-6 border border-gray-200">
+                    <h4 class="text-md font-bold text-gray-800 mb-4">Monthly Overtime Trend</h4>
+                    <p class="text-sm text-gray-600 mb-3">Your overtime hours over the last 6 months</p>
+                    <div style="height: 280px;">
+                        <canvas id="monthlyOTChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- OT Claims Status -->
+                <div class="bg-white rounded-lg p-6 border border-gray-200">
+                    <h4 class="text-md font-bold text-gray-800 mb-4">OT Claims Status</h4>
+                    <p class="text-sm text-gray-600 mb-3">Your salary/OT claim statistics</p>
+                    <div class="grid grid-cols-3 gap-4 mb-4">
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <p class="text-xs text-gray-600 mb-1">Approved</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $otClaimsStatus['approved'] ?? 0 }}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <p class="text-xs text-gray-600 mb-1">Pending</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $otClaimsStatus['pending'] ?? 0 }}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border border-gray-200">
+                            <p class="text-xs text-gray-600 mb-1">Rejected</p>
+                            <p class="text-2xl font-bold text-gray-800">{{ $otClaimsStatus['rejected'] ?? 0 }}</p>
+                        </div>
+                    </div>
+                    <div style="height: 200px;">
+                        <canvas id="otClaimsStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -565,7 +765,243 @@ document.addEventListener('DOMContentLoaded', function() {
     @if(session('error'))
         showToast('{{ session('error') }}', 'error');
     @endif
+
+    // Initialize charts
+    initLeaveBalanceChart();
+    initLeaveStatusChart();
+    initMonthlyOTChart();
+    initOTClaimsStatusChart();
 });
+
+// ==================== CHART.JS INITIALIZATION ====================
+
+// Color Palette - Minimal, professional colors
+const chartColors = {
+    primary: '#3b82f6',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#06b6d4',
+    secondary: '#8b5cf6',
+    light: '#f3f4f6'
+};
+
+// Initialize Leave Balance Chart (Stacked Bar)
+function initLeaveBalanceChart() {
+    const ctx = document.getElementById('leaveBalanceChart');
+    if (!ctx) return;
+    
+    const leaveBalanceData = @json($leaveBalanceData ?? []);
+    const leaveBalanceLabels = @json($leaveBalanceLabels ?? []);
+    
+    console.log('Leave Balance Chart Data:', leaveBalanceData);
+    console.log('Leave Balance Chart Labels:', leaveBalanceLabels);
+    
+    if (leaveBalanceData.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500"><p>No leave balance data available</p></div>';
+        return;
+    }
+    
+    const usedData = leaveBalanceData.map(d => d.used);
+    const remainingData = leaveBalanceData.map(d => d.remaining);
+    
+    console.log('Used Data:', usedData);
+    console.log('Remaining Data:', remainingData);
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: leaveBalanceLabels,
+            datasets: [
+                {
+                    label: 'Used Days',
+                    data: usedData,
+                    backgroundColor: chartColors.danger,
+                    borderRadius: 6,
+                    borderSkipped: false
+                },
+                {
+                    label: 'Remaining Days',
+                    data: remainingData,
+                    backgroundColor: chartColors.success,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { font: { size: 12 }, padding: 15 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.x + ' days';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                },
+                y: {
+                    stacked: true,
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
+
+// Initialize Leave Status Chart (Doughnut)
+function initLeaveStatusChart() {
+    const ctx = document.getElementById('leaveStatusChart');
+    if (!ctx) return;
+    
+    const leaveStatus = @json($leaveStatus ?? ['approved' => 0, 'rejected' => 0]);
+    const total = leaveStatus.approved + leaveStatus.rejected;
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Approved', 'Rejected'],
+            datasets: [{
+                data: [leaveStatus.approved, leaveStatus.rejected],
+                backgroundColor: [
+                    chartColors.success,
+                    chartColors.danger
+                ],
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { font: { size: 11 }, padding: 12 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize Monthly OT Trend Chart (Line)
+function initMonthlyOTChart() {
+    const ctx = document.getElementById('monthlyOTChart');
+    if (!ctx) return;
+    
+    const monthlyOTData = @json($monthlyOTData ?? []);
+    const monthLabels = @json($monthLabels ?? []);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: 'Overtime Hours',
+                data: monthlyOTData,
+                borderColor: chartColors.warning,
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: chartColors.warning,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { font: { size: 12 }, padding: 15 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y + ' hrs';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
+
+// Initialize OT Claims Status Chart (Doughnut)
+function initOTClaimsStatusChart() {
+    const ctx = document.getElementById('otClaimsStatusChart');
+    if (!ctx) return;
+    
+    const otClaimsStatus = @json($otClaimsStatus ?? ['approved' => 0, 'pending' => 0, 'rejected' => 0]);
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Approved', 'Pending', 'Rejected'],
+            datasets: [{
+                data: [otClaimsStatus.approved, otClaimsStatus.pending, otClaimsStatus.rejected],
+                backgroundColor: [
+                    chartColors.success,
+                    chartColors.warning,
+                    chartColors.danger
+                ],
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: { font: { size: 11 }, padding: 12 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
 
 // Add CSS animation
 const style = document.createElement('style');

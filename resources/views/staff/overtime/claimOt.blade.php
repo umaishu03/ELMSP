@@ -6,17 +6,18 @@
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
 
-<div class="max-w-7xl mx-auto mt-8 mb-12 space-y-6">
+<!-- Title -->
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">Claim Overtime</h1>
+    <p class="text-gray-600 flex items-center gap-2">
+        <i class="fas fa-exchange-alt text-blue-500"></i>
+        Convert your overtime hours into replacement leave or payroll
+    </p>
+</div>
+
+<div class="space-y-6">
     <!-- ========== CLAIM OVERTIME SECTION ========== -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="bg-gradient-to-r from-purple-600 to-purple-800 px-8 py-6">
-            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
-                <i class="fas fa-exchange-alt"></i>
-                Claim Overtime
-            </h1>
-            <p class="text-purple-100 mt-2">Convert your overtime hours into replacement leave or payroll</p>
-        </div>
-        
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
         <!-- Info Banner -->
         <div class="px-8 py-4 bg-purple-50 border-l-4 border-purple-400">
             <div class="flex items-start gap-3">
@@ -77,6 +78,68 @@
 
             <!-- OT Summary Display (Hidden by default) -->
             <div id="otSummarySection" class="hidden">
+                <!-- Future OT Info (if any) -->
+                @if(isset($futureHours) && $futureHours > 0)
+                <div class="px-8 py-4 bg-blue-50 border-l-4 border-blue-400">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                        <div class="flex-1">
+                            <p class="font-semibold text-blue-900 mb-1">Future Overtime Not Available</p>
+                            <p class="text-sm text-blue-800 mb-2">
+                                <strong>{{ number_format($futureHours, 1) }} hours</strong> of approved overtime for future dates are not available for claim. Overtime can only be claimed for dates that have already passed.
+                            </p>
+                            @if(isset($futureOT) && $futureOT->count() > 0)
+                            <details class="mt-2">
+                                <summary class="text-sm text-blue-700 cursor-pointer hover:text-blue-900 font-medium">
+                                    View future overtime details
+                                </summary>
+                                <div class="mt-2 pl-4 border-l-2 border-blue-300">
+                                    <ul class="text-sm text-blue-800 space-y-1">
+                                        @foreach($futureOT as $ot)
+                                        <li>
+                                            • {{ $ot->ot_date->format('M d, Y') }} - {{ number_format($ot->hours, 1) }} hours ({{ ucfirst(str_replace('_', ' ', $ot->ot_type)) }})
+                                        </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </details>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- Excluded OT Warning (if any) -->
+                @if(isset($excludedHours) && $excludedHours > 0)
+                <div class="px-8 py-4 bg-amber-50 border-l-4 border-amber-400">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
+                        <div class="flex-1">
+                            <p class="font-semibold text-amber-900 mb-1">Overtime Hours Excluded</p>
+                            <p class="text-sm text-amber-800 mb-2">
+                                <strong>{{ number_format($excludedHours, 1) }} hours</strong> of approved overtime have been automatically excluded because you have approved leave on those dates.
+                            </p>
+                            @if(isset($excludedOT) && $excludedOT->count() > 0)
+                            <details class="mt-2">
+                                <summary class="text-sm text-amber-700 cursor-pointer hover:text-amber-900 font-medium">
+                                    View excluded overtime details
+                                </summary>
+                                <div class="mt-2 pl-4 border-l-2 border-amber-300">
+                                    <ul class="text-sm text-amber-800 space-y-1">
+                                        @foreach($excludedOT as $ot)
+                                        <li>
+                                            • {{ $ot->ot_date->format('M d, Y') }} - {{ number_format($ot->hours, 1) }} hours ({{ ucfirst(str_replace('_', ' ', $ot->ot_type)) }})
+                                        </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </details>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Summary Card -->
                 <div class="px-8 py-6 border-b border-gray-100 bg-gradient-to-br from-purple-50 to-purple-100">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -92,8 +155,13 @@
                             $replacementDays = floor($totalHours / 8);
                         @endphp
                         <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
-                            <p class="text-xs font-medium text-gray-600 mb-2">Total OT Hours</p>
+                            <p class="text-xs font-medium text-gray-600 mb-2">Total OT Hours Available</p>
                             <p class="text-3xl font-bold text-purple-600">{{ number_format($totalHours,1) }} hrs</p>
+                            @if(isset($excludedHours) && $excludedHours > 0)
+                            <p class="text-xs text-amber-600 mt-1">
+                                <i class="fas fa-info-circle"></i> Excludes {{ number_format($excludedHours, 1) }} hrs on leave dates
+                            </p>
+                            @endif
                         </div>
                         <div class="bg-white rounded-xl p-6 shadow-sm border border-purple-100">
                             <p class="text-xs font-medium text-gray-600 mb-2">Days Entitled</p>
@@ -312,14 +380,13 @@
                         </button>
                         <button type="submit" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2">
                             <i class="fas fa-check-circle"></i>
-                            <span>Submit Claim</span>
+                            <span>Submit</span>
                         </button>
                     </div>
                 </div>
             </div>
         </form>
     </div>
-
 </div>
 
 <script>

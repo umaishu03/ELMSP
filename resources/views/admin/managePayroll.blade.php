@@ -11,47 +11,46 @@
 @php
     $statusColors = [
         'draft' => 'bg-yellow-100 text-yellow-800 border-yellow-300',
-        'approved' => 'bg-green-100 text-green-800 border-green-300',
-        'paid' => 'bg-blue-100 text-blue-800 border-blue-300'
+        'paid' => 'bg-green-100 text-green-800 border-green-300'
     ];
     $statusLabels = [
         'draft' => 'Draft',
-        'approved' => 'Approved',
         'paid' => 'Paid'
     ];
+    // Treat 'approved' as 'paid' for backward compatibility
     $currentStatus = $overallStatus ?? 'draft';
+    if ($currentStatus === 'approved') {
+        $currentStatus = 'paid';
+    }
 @endphp
 
-<div class="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-    @if(session('success'))
-        <div class="mb-4 sm:mb-6 bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center gap-2 text-sm sm:text-base">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-            </svg>
-            <span class="break-words">{{ session('success') }}</span>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="mb-4 sm:mb-6 bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center gap-2 text-sm sm:text-base">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-            </svg>
-            <span class="break-words">{{ session('error') }}</span>
-        </div>
-    @endif
-    <div class="mb-4 sm:mb-8">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-2">Payroll Management</h1>
-                <p class="text-sm sm:text-base text-gray-600 flex items-center gap-2">
-                    <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <span class="break-words">Monthly payroll calculation based on shifts assigned in timetable</span>
-                </p>
-            </div>
-        </div>
+@if(session('success'))
+    <div class="mb-4 sm:mb-6 bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center gap-2 text-sm sm:text-base">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="break-words">{{ session('success') }}</span>
     </div>
+@endif
+@if(session('error'))
+    <div class="mb-4 sm:mb-6 bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg flex items-center gap-2 text-sm sm:text-base">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="break-words">{{ session('error') }}</span>
+    </div>
+@endif
+
+<!-- Title -->
+<div class="mb-4 sm:mb-8">
+    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-2">Payroll Management</h1>
+    <p class="text-sm sm:text-base text-gray-600 flex items-center gap-2">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        <span class="break-words">Monthly payroll calculation based on shifts assigned in timetable</span>
+    </p>
+</div>
 
     {{-- Alpine.js Data Scope for Filtering and State --}}
     <div x-data="payrollData()" x-init="init()">
@@ -114,16 +113,18 @@
         </div>
 
         {{-- Payroll Table --}}
-        <form method="POST" action="{{ route('admin.payroll.update-bonus') }}" id="bonusForm">
+        <form method="POST" action="{{ route('admin.payroll.publish') }}" id="bonusForm">
             @csrf
             <input type="hidden" name="month" value="{{ $selectedMonth ?? now()->format('Y-m') }}">
+            @if($currentStatus === 'draft')
+                <input type="hidden" name="publish_all" value="1">
+                <input type="hidden" name="status" value="paid">
+            @endif
             <div class="bg-white rounded-xl shadow-xl overflow-hidden">
                 <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                         <h2 class="text-base sm:text-lg lg:text-xl font-bold text-white break-words">Staff Payroll Details - {{ \Carbon\Carbon::parse($selectedMonth ?? now()->format('Y-m'))->format('F Y') }}</h2>
-                        <span class="px-2 sm:px-3 py-1 text-xs font-semibold rounded-full border {{ $statusColors[$currentStatus] ?? $statusColors['draft'] }}">
-                            {{ $statusLabels[$currentStatus] ?? 'Draft' }}
-                        </span>
+                        
                     </div>
             </div>
             
@@ -134,15 +135,15 @@
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Staff</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Role</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-left text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Department</th>
-                            <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-center text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Shifts</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Basic</th>
+                            <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Prorated Salary</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Commission</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Bonus</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">PH Pay</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Normal OT</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">PH OT</th>
                             <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Deductions</th>
-                            <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Total</th>
+                            <th class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-right text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">Net Salary</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -153,7 +154,18 @@
                                 $phOtPay = 21.68 * ($staff->ph_ot_hours ?? 0);
                                 $marketingBonus = $staff->marketing_bonus ?? 0;
                                 $totalDeductions = $staff->total_deductions ?? 0;
-                                $baseTotal = $staff->basic_salary + $staff->fixed_commission + $publicHolidayPay + $normalOtPay + $phOtPay;
+                                
+                                // If staff didn't work in this month at all, salary is 0
+                                if (($staff->working_days ?? 0) == 0) {
+                                    $salaryToUse = 0;
+                                } else {
+                                    // Use prorated salary if not full month, otherwise use basic salary
+                                    $salaryToUse = (!$staff->is_full_month && $staff->prorated_salary) 
+                                        ? $staff->prorated_salary 
+                                        : $staff->basic_salary;
+                                }
+                                
+                                $baseTotal = $salaryToUse + $staff->fixed_commission + $publicHolidayPay + $normalOtPay + $phOtPay;
                                 $grossTotal = $baseTotal + $marketingBonus;
                                 $total = $grossTotal - $totalDeductions;
                             @endphp
@@ -163,14 +175,14 @@
                                 data-department="{{ strtolower($staff->department) }}"
                                 x-data="{
                                     marketingBonus: {{ $marketingBonus }},
-                                    basicSalary: {{ $staff->basic_salary }},
+                                    salaryToUse: {{ $salaryToUse }},
                                     fixedCommission: {{ $staff->fixed_commission }},
                                     publicHolidayPay: {{ $publicHolidayPay }},
                                     normalOtPay: {{ $normalOtPay }},
                                     phOtPay: {{ $phOtPay }},
                                     totalDeductions: {{ $totalDeductions }},
                                     get total() {
-                                        return this.basicSalary + this.fixedCommission + this.marketingBonus + this.publicHolidayPay + this.normalOtPay + this.phOtPay - this.totalDeductions;
+                                        return this.salaryToUse + this.fixedCommission + this.marketingBonus + this.publicHolidayPay + this.normalOtPay + this.phOtPay - this.totalDeductions;
                                     }
                                 }">
                                 <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4">
@@ -182,10 +194,13 @@
                                             @endif
                                             @php
                                                 $staffStatus = $staff->payroll_status ?? 'draft';
+                                                // Treat 'approved' as 'paid' for backward compatibility
+                                                if ($staffStatus === 'approved') {
+                                                    $staffStatus = 'paid';
+                                                }
                                                 $staffStatusColors = [
                                                     'draft' => 'bg-yellow-100 text-yellow-700',
-                                                    'approved' => 'bg-green-100 text-green-700',
-                                                    'paid' => 'bg-blue-100 text-blue-700'
+                                                    'paid' => 'bg-green-100 text-green-700'
                                                 ];
                                             @endphp
                                             <span class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full {{ $staffStatusColors[$staffStatus] ?? $staffStatusColors['draft'] }} font-medium mt-1 inline-block">
@@ -200,23 +215,15 @@
                                     </span>
                                 </td>
                                 <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700">{{ $staff->department }}</td>
-                                <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-center">
-                                    <div class="flex flex-col items-center">
-                                        <span class="text-xs sm:text-sm font-semibold text-gray-900">
-                                            {{ $staff->working_days }}/{{ $staff->total_working_days }}
-                                        </span>
-                                        <span class="text-[10px] sm:text-xs text-gray-500 hidden sm:block">shifts</span>
-                                        @if($staff->is_full_month)
-                                            <span class="text-[10px] sm:text-xs text-green-600 font-medium mt-1 hidden sm:block">Full Month</span>
-                                        @else
-                                            <span class="text-[10px] sm:text-xs text-orange-600 font-medium mt-1 hidden sm:block">Pro-rated</span>
-                                        @endif
-                                    </div>
-                                </td>
                                 <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-right">
                                     <div class="font-medium text-gray-900">RM {{ number_format($staff->basic_salary, 2) }}</div>
+                                </td>
+                                <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-right">
+                                    <div class="font-medium text-gray-900">RM {{ number_format($staff->prorated_salary ?? 0, 2) }}</div>
                                     @if(!$staff->is_full_month)
-                                        <div class="text-[10px] sm:text-xs text-gray-500 hidden lg:block">(Full: RM {{ number_format($staff->full_basic_salary, 2) }})</div>
+                                        <div class="text-[10px] sm:text-xs text-gray-500 hidden lg:block">
+                                            ({{ $staff->working_days }}/{{ $staff->total_working_days }} days)
+                                        </div>
                                     @endif
                                 </td>
                                 <td class="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-right">
@@ -302,68 +309,21 @@
                     <p class="text-xs sm:text-sm text-gray-600 mt-1 break-words">Actions will apply to all payrolls for {{ \Carbon\Carbon::parse($selectedMonth ?? now()->format('Y-m'))->format('F Y') }}</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                    {{-- Save Marketing Bonuses Button --}}
-                    <button type="submit" 
-                            form="bonusForm"
-                            class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        <span class="whitespace-nowrap">Save Marketing Bonuses</span>
-                    </button>
-
-                    {{-- Sync Payroll Button --}}
-                    <form method="POST" action="{{ route('admin.payroll.sync') }}" class="inline">
-                        @csrf
-                        <input type="hidden" name="month" value="{{ $selectedMonth ?? now()->format('Y-m') }}">
-                        <button type="submit" 
-                                onclick="return confirm('This will recalculate and update all payroll records for this month based on current shifts and OT claims. Continue?')"
-                                class="px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
-                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
-                            <span class="whitespace-nowrap">Sync Payroll Data</span>
-                        </button>
-                    </form>
-
-                    {{-- Publish Button (Draft → Approved) --}}
+                    {{-- Publish Button (Save Bonuses + Sync + Publish Draft → Paid) --}}
                     @if($currentStatus === 'draft')
-                        <form method="POST" action="{{ route('admin.payroll.publish') }}" class="inline">
-                            @csrf
-                            <input type="hidden" name="month" value="{{ $selectedMonth ?? now()->format('Y-m') }}">
-                            <input type="hidden" name="publish_all" value="1">
-                            <input type="hidden" name="status" value="approved">
-                            <button type="submit" 
-                                    onclick="return confirm('Are you sure you want to publish ALL draft payrolls for this month?')"
-                                    class="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
-                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                                </svg>
-                                <span class="whitespace-nowrap">Publish All Draft Payrolls</span>
-                            </button>
-                        </form>
+                        <button type="submit" 
+                                form="bonusForm"
+                                onclick="return confirm('This will save marketing bonuses, sync (recalculate) all payroll records based on current shifts and OT claims, then publish ALL draft payrolls for this month. Continue?')"
+                                class="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <span class="whitespace-nowrap">Publish</span>
+                        </button>
                     @endif
 
-                    {{-- Mark as Paid Button (Approved → Paid) --}}
-                    @if($currentStatus === 'approved')
-                        <form method="POST" action="{{ route('admin.payroll.publish') }}" class="inline">
-                            @csrf
-                            <input type="hidden" name="month" value="{{ $selectedMonth ?? now()->format('Y-m') }}">
-                            <input type="hidden" name="publish_all" value="1">
-                            <input type="hidden" name="status" value="paid">
-                            <button type="submit" 
-                                    onclick="return confirm('Are you sure you want to mark ALL approved payrolls as paid for this month?')"
-                                    class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
-                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <span class="whitespace-nowrap">Mark All as Paid</span>
-                            </button>
-                        </form>
-                    @endif
-
-                    {{-- Revert to Draft Button (Approved → Draft or Paid → Draft) --}}
-                    @if($currentStatus === 'approved' || $currentStatus === 'paid')
+                    {{-- Revert to Draft Button (Paid → Draft) --}}
+                    @if($currentStatus === 'paid')
                         <form method="POST" action="{{ route('admin.payroll.publish') }}" class="inline">
                             @csrf
                             <input type="hidden" name="month" value="{{ $selectedMonth ?? now()->format('Y-m') }}">
@@ -399,16 +359,23 @@
                                 <svg class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
                                 </svg>
-                                Working Days Calculation
+                                Salary Calculation Rules
                             </h4>
                             <ul class="space-y-1 text-xs sm:text-sm text-gray-700">
-                                <li>• Working days are based on <strong>shifts assigned in the timetable</strong></li>
-                                <li>• Only counts shifts with working hours (excludes rest days and leave days)</li>
-                                <li>• <strong>Industry Standard:</strong> Salary is always calculated based on <strong>full month (27 days)</strong>, regardless of hire date</li>
-                                <li>• <strong>Full month staff:</strong> Receives full basic salary if worked all 27 shifts</li>
-                                <li>• <strong>Mid-month join:</strong> Only counts shifts from hire date onwards, but salary is still pro-rated against full month (27 days)</li>
-                                <li>• <strong>Formula:</strong> (Full Basic Salary ÷ 27) × Actual Shifts Worked</li>
-                                <li>• Example: Staff hired Dec 28, worked 2 shifts → (RM 1,500 ÷ 27) × 2 = RM 111.11</li>
+                                <li>• <strong>Simple Rule:</strong> Prorated salary applies when staff does not work the full payroll period</li>
+                                <li>• <strong>Existing staff:</strong> Normally receive full basic salary</li>
+                                <li>• <strong>Common Practice (Restaurant):</strong></li>
+                                <li class="ml-4">- Restaurant operates 7 days a week</li>
+                                <li class="ml-4">- Working days per week: <strong>6 days</strong></li>
+                                <li class="ml-4">- Rest day: <strong>1 day per week</strong> (rotational, not fixed to weekend)</li>
+                                <li>• <strong>Monthly Working Days (Average):</strong></li>
+                                <li class="ml-4">- <strong>30 days month:</strong> 26 working days</li>
+                                <li class="ml-4">- <strong>31 days month:</strong> 27 working days</li>
+                                <li class="ml-4">- <strong>February:</strong> 24-25 working days</li>
+                                <li>• <strong>Note:</strong> This excludes weekly rest days, not weekends</li>
+                                <li>• <strong>Prorated Salary Formula:</strong> (Basic Salary ÷ Total Working Days in Month) × Actual Working Days</li>
+                                <li>• <strong>Salary Deduction (Unpaid Leave):</strong> (Monthly Salary ÷ Total Scheduled Working Days in Month) × Unpaid Days</li>
+                                <li>• <strong>Paid leaves:</strong> Counted as working days (no deduction)</li>
                             </ul>
                         </div>
                         <div class="bg-white rounded-lg p-3 sm:p-4 shadow-sm">
@@ -458,7 +425,6 @@
             </div>
         </div>
     </div>
-</div>
 @endsection
 
 @push('scripts')

@@ -464,8 +464,13 @@
         <div class="header">
             <div class="header-top">
                 <div class="company-info">
-                    <div class="company-name">ELMSP</div>
-                    <div class="company-tagline">Employee Management System</div>
+                    <img src="data:image/webp;base64,{{ base64_encode(file_get_contents(public_path('images/sheikh bistro logo.webp'))) }}" alt="Sheikh Bistro" style="max-height: 50px; width: auto;">
+                    <div style="font-size: 11px; color: #4b5563; margin-top: 8px; line-height: 1.5;">
+                        <strong>Sheikh Bistro</strong><br>
+                        Cawangan Bukit Tambun (Pearl City Mall)<br>
+                        Bandar Tasek Mutiara, 14120 Simpang Ampat,<br>
+                        Pulau Pinang
+                    </div>
                 </div>
                 <div class="payslip-title">
                     <h1>PAYSLIP</h1>
@@ -543,6 +548,17 @@
                     <tr>
                         <td class="item-name">Marketing Bonus</td>
                         <td class="item-amount">{{ number_format($payroll->marketing_bonus, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if(($payroll->extra_day_pay ?? 0) > 0)
+                    <tr>
+                        <td class="item-name">
+                            Extra Day Pay
+                            @if(($payroll->extra_days ?? 0) > 0)
+                                ({{ $payroll->extra_days }} day{{ ($payroll->extra_days ?? 0) > 1 ? 's' : '' }})
+                            @endif
+                        </td>
+                        <td class="item-amount">{{ number_format($payroll->extra_day_pay, 2) }}</td>
                     </tr>
                     @endif
                     @if(($payroll->fulltime_ot_pay ?? 0) > 0)

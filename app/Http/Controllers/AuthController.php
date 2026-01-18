@@ -170,6 +170,14 @@ class AuthController extends Controller
             return redirect()->route('password.request')->withErrors(['email' => 'Invalid reset link. Missing token or email.']);
         }
 
+        // If token is 'success', it means password was already reset - show success message
+        if ($token === 'success' && session('success')) {
+            return view('auth.reset-password', [
+                'token' => $token,
+                'email' => $email,
+            ]);
+        }
+
         // Verify token exists
         $passwordReset = DB::table('password_reset_tokens')
             ->where('email', $email)
@@ -263,6 +271,9 @@ class AuthController extends Controller
 
         \Log::info('Password reset successful', ['email' => $email]);
 
-        return redirect()->route('login')->with('success', 'Your password has been reset successfully. You can now login with your new password.');
+        // Store success in session and redirect to reset password page to show success message
+        // The page will then redirect to login after showing the message
+        return redirect()->route('password.reset', ['token' => 'success', 'email' => $email])
+            ->with('success', 'Your password has been reset successfully! Redirecting to login page...');
     }
 }

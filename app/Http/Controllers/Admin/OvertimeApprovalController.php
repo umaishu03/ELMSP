@@ -65,9 +65,10 @@ class OvertimeApprovalController extends Controller
                 // Calculate new end time by adding OT hours
                 $newEndTime = $currentEndTime->copy()->addHours($otHours);
                 
-                // Update existing shift with new end time
+                // Update existing shift with new end time and link overtime_id
                 $existingShift->update([
                     'end_time' => $newEndTime->format('H:i'),
+                    'overtime_id' => $overtime->id,
                     'rest_day' => false,
                 ]);
                 $shiftUpdated = true;
@@ -89,6 +90,7 @@ class OvertimeApprovalController extends Controller
                         'start_time' => $startTime->format('H:i'),
                         'end_time' => $endTime->format('H:i'),
                         'break_minutes' => 60,
+                        'overtime_id' => $overtime->id,
                         'rest_day' => false,
                     ]);
                     $shiftUpdated = true;
@@ -100,6 +102,7 @@ class OvertimeApprovalController extends Controller
                         'start_time' => $startTime->format('H:i'),
                         'end_time' => $endTime->format('H:i'),
                         'break_minutes' => 60,
+                        'overtime_id' => $overtime->id,
                         'rest_day' => false,
                     ]);
                 }
