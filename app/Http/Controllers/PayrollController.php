@@ -898,19 +898,8 @@ class PayrollController extends Controller
             
             $updated = $query->update(['status' => $targetStatus]);
             
-            // Enhanced message for publish action (draft → paid)
-            if ($targetStatus === 'paid' && $currentStatus === 'draft') {
-                $bonusText = !empty($bonuses) ? "Marketing bonuses saved, " : "";
-                $message = "{$bonusText}Payrolls synced and published successfully! {$synced} payroll record(s) synced, {$updated} payroll record(s) published.";
-                if ($created > 0) {
-                    $message .= " {$created} new payroll record(s) created.";
-                }
-            } else {
-                $message = "All payrolls {$statusMessages[$targetStatus]} successfully! {$updated} payroll record(s) updated.";
-                if ($created > 0) {
-                    $message .= " {$created} new payroll record(s) created.";
-                }
-            }
+            // Simplified success message
+            $message = "Successful";
         } elseif (!empty($staffIds)) {
             // Update selected staff payrolls
             $query = \App\Models\Payroll::where('year', $year)
@@ -925,19 +914,8 @@ class PayrollController extends Controller
             
             $updated = $query->update(['status' => $targetStatus]);
             
-            // Enhanced message for publish action (draft → paid)
-            if ($targetStatus === 'paid' && $currentStatus === 'draft') {
-                $bonusText = !empty($bonuses) ? "Marketing bonuses saved, " : "";
-                $message = "{$bonusText}Selected payrolls synced and published successfully! {$synced} payroll record(s) synced, {$updated} payroll record(s) published.";
-                if ($created > 0) {
-                    $message .= " {$created} new payroll record(s) created.";
-                }
-            } else {
-                $message = "Selected payrolls {$statusMessages[$targetStatus]} successfully! {$updated} payroll record(s) updated.";
-                if ($created > 0) {
-                    $message .= " {$created} new payroll record(s) created.";
-                }
-            }
+            // Simplified success message
+            $message = "Successful";
         }
 
         return redirect()->route('admin.payroll', ['month' => $selectedMonth])

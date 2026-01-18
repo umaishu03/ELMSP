@@ -457,7 +457,7 @@ class LeaveController extends Controller
         $staffLeaves = Leave::with('staff.user', 'leaveType')
             ->where('status', 'approved')
             ->orWhere('status', 'pending')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('start_date', 'desc')
             ->paginate(15);
 
         return view('admin.staffLeaveStatus', compact('staffLeaves'));

@@ -252,7 +252,7 @@
             </div>
 
             <div class="p-4 sm:p-6">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     
                     <!-- Total -->
                     <div class="stat-card border-purple-100 bg-purple-50/40">
@@ -271,24 +271,7 @@
                         </div>
                     </div>
 
-                    <!-- Pending -->
-                    <div class="stat-card border-amber-100 bg-amber-50/40">
-                        <div class="stat-top">
-                            <div class="stat-icon bg-amber-600">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="stat-label">Pending</p>
-                                <p class="stat-value text-gray-900" id="pendingCount">0</p>
-                            </div>
-                        </div>
-                        <div class="stat-bottom text-amber-700/80">
-                            <i class="fas fa-hourglass-half"></i>
-                            <span>Awaiting review</span>
-            </div>
-        </div>
-
-        <!-- Approved -->
+                    <!-- Approved -->
                     <div class="stat-card border-green-100 bg-green-50/40">
                         <div class="stat-top">
                             <div class="stat-icon bg-green-600">
@@ -337,7 +320,6 @@
                     <label class="block text-xs font-medium text-gray-600 mb-1.5 sm:hidden">Filter by Status</label>
                     <select id="statusFilter" class="appearance-none border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-2.5 pr-10 w-full text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-700 min-h-[44px]">
                         <option value="">All Status</option>
-                        <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
                         <option value="rejected">Rejected</option>
                     </select>
@@ -445,15 +427,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateStats(applications) {
-        document.getElementById('totalApplications').textContent = applications.length;
-        document.getElementById('pendingCount').textContent = applications.filter(a => a.status === 'pending').length;
-        document.getElementById('approvedCount').textContent = applications.filter(a => a.status === 'approved').length;
-        document.getElementById('rejectedCount').textContent = applications.filter(a => a.status === 'rejected').length;
+        // Filter out pending applications
+        const nonPendingApplications = applications.filter(a => a.status !== 'pending');
+        document.getElementById('totalApplications').textContent = nonPendingApplications.length;
+        document.getElementById('approvedCount').textContent = nonPendingApplications.filter(a => a.status === 'approved').length;
+        document.getElementById('rejectedCount').textContent = nonPendingApplications.filter(a => a.status === 'rejected').length;
     }
 
     function getStatusBadge(status) {
         const badges = {
-            pending: '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700"><i class="fas fa-clock"></i> Pending</span>',
             approved: '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700"><i class="fas fa-check-circle"></i> Approved</span>',
             rejected: '<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700"><i class="fas fa-times-circle"></i> Rejected</span>'
         };
@@ -524,7 +506,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const leaveTypeValue = leaveTypeFilter.value.toLowerCase();
         const searchValue = searchInput.value.toLowerCase();
 
-        const filtered = leaveApplications.filter(app => {
+        // Filter out pending applications first
+        const nonPendingApplications = leaveApplications.filter(app => app.status !== 'pending');
+
+        const filtered = nonPendingApplications.filter(app => {
             const matchesStatus = !statusValue || app.status === statusValue;
             const matchesLeaveType = !leaveTypeValue || app.leaveType === leaveTypeValue;
             const matchesSearch = !searchValue || 
@@ -672,8 +657,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     updateBalanceDisplay();
+    // Filter out pending applications before displaying
+    const nonPendingApplications = leaveApplications.filter(app => app.status !== 'pending');
     updateStats(leaveApplications);
-    renderApplications(leaveApplications);
+    renderApplications(nonPendingApplications);
 });
 </script>
 

@@ -313,7 +313,7 @@
                     @if($currentStatus === 'draft')
                         <button type="submit" 
                                 form="bonusForm"
-                                onclick="return confirm('This will save marketing bonuses, sync (recalculate) all payroll records based on current shifts and OT claims, then publish ALL draft payrolls for this month. Continue?')"
+                                onclick="return handlePublishConfirm(event)"
                                 class="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
                             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -330,7 +330,7 @@
                             <input type="hidden" name="publish_all" value="1">
                             <input type="hidden" name="status" value="draft">
                             <button type="submit" 
-                                    onclick="return confirm('Are you sure you want to revert ALL payrolls to draft for this month?')"
+                                    onclick="return handleRevertConfirm(event)"
                                     class="px-5 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base min-w-[140px]">
                                 <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -430,6 +430,83 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script>
+// --- Custom Confirm Modal (replaces browser confirm) ---
+function showCustomConfirm(message, type = 'warning') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customConfirmModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customConfirmModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : 'ℹ️');
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : 'text-blue-600');
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <div class="flex gap-2">
+                        <button class="customConfirmCancel w-full bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 transition">
+                            Cancel
+                        </button>
+                        <button class="customConfirmOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Handle button clicks
+        modal.querySelector('.customConfirmOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve(true);
+        });
+        
+        modal.querySelector('.customConfirmCancel').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve(false);
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve(false);
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
+// Handle publish confirmation
+async function handlePublishConfirm(event) {
+    event.preventDefault();
+    const confirmed = await showCustomConfirm('This will save marketing bonuses, sync (recalculate) all payroll records based on current shifts and OT claims, then publish ALL draft payrolls for this month. Continue?', 'warning');
+    if (confirmed) {
+        document.getElementById('bonusForm').submit();
+    }
+    return false;
+}
+
+// Handle revert confirmation
+async function handleRevertConfirm(event) {
+    event.preventDefault();
+    const confirmed = await showCustomConfirm('Are you sure you want to revert ALL payrolls to draft for this month?', 'warning');
+    if (confirmed) {
+        event.target.closest('form').submit();
+    }
+    return false;
+}
+
 // Alpine.js data function
 function payrollData() {
     return {

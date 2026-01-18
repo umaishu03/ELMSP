@@ -19,21 +19,26 @@ class StaffController extends Controller
         // Get all users with their staff/admin records, excluding seeded test users
         $excludedEmails = ['admin@gmail.com', 'staff@gmail.com'];
         $users = User::with(['staff'])
-            ->whereNotIn('email', $excludedEmails)
-            ->orderBy('name')
+            ->leftJoin('staff', 'users.id', '=', 'staff.user_id')
+            ->whereNotIn('users.email', $excludedEmails)
+            ->select('users.*')
+            ->orderByRaw('COALESCE(staff.employee_id, "") ASC')
+            ->orderBy('users.name', 'asc') // Secondary sort by name for users without employee_id
             ->get();
         
         // Create CSV content with proper Excel formatting
         $csvData = [];
         
         // Add header row (fixed typo: "department" not "departmer")
-        $csvData[] = ['staff_name', 'email', 'id', 'department', 'role'];
+        $csvData[] = ['staff_name', 'email', 'id', 'department', 'hire_date', 'role'];
         
         // Add data rows
         foreach ($users as $user) {
             $department = '';
+            $hireDate = '';
             if ($user->staff) {
                 $department = $user->staff->department;
+                $hireDate = $user->staff->hire_date ? $user->staff->hire_date->format('Y-m-d') : '';
             }
             // Admin users don't have department (admin table removed)
             
@@ -41,8 +46,9 @@ class StaffController extends Controller
             $csvData[] = [
                 trim($user->name ?? ''),
                 trim($user->email ?? ''),
-                trim($user->employee_id ?? ''),
+                trim($user->staff ? $user->staff->employee_id : ''),
                 trim($department),
+                trim($hireDate),
                 trim($user->role ?? '')
             ];
         }

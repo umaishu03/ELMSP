@@ -105,10 +105,11 @@ if ($staffId) {
         $firstLeave = $leaves->first();
         if ($firstLeave->leaveType) {
             $typeName = $firstLeave->leaveType->type_name ?? 'Unknown';
+            $leaveType = $firstLeave->leaveType;
             
-            // Calculate used days from Leave records
+            // Calculate used days from Leave records using total_days (not date difference)
             $usedDays = $leaves->sum(function($leave) {
-                return $leave->start_date->diffInDays($leave->end_date) + 1;
+                return floatval($leave->total_days ?? 0);
             });
             
             // Get balance data if available
@@ -128,10 +129,13 @@ if ($staffId) {
                 $remaining = $storedRemaining > 0 ? $storedRemaining : ($total - $storedUsed);
                 $used = $storedUsed;
             } else {
-                // Fallback: use Leave record calculations
-                $used = floatval($usedDays);
-                $remaining = 0;
-                $total = floatval($usedDays);
+                // Fallback: use Leave record calculations and leave type max_days
+                $used = $usedDays;
+                $maxDays = $leaveType->max_days ?? (\App\Models\Leave::$maxLeaves[strtolower($typeName)] ?? 0);
+                $total = floatval($maxDays);
+                
+                // Calculate remaining days (max - used, but not less than 0)
+                $remaining = max(0, $total - $used);
             }
             
             $leaveBalanceLabels[] = ucfirst($typeName);

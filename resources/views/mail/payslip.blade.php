@@ -105,7 +105,6 @@
     <div class="email-container">
         <div class="header">
             <div style="text-align: center; margin-bottom: 15px;">
-                <img src="data:image/webp;base64,{{ base64_encode(file_get_contents(public_path('images/sheikh bistro logo.webp'))) }}" alt="Sheikh Bistro" style="max-height: 60px; width: auto;">
                 <div style="font-size: 12px; color: #4b5563; margin-top: 10px; line-height: 1.6;">
                     <strong>Sheikh Bistro</strong><br>
                     Cawangan Bukit Tambun (Pearl City Mall)<br>

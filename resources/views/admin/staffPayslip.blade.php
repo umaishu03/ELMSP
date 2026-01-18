@@ -277,6 +277,110 @@
 </style>
 
 <script>
+// --- Custom Alert Modal (replaces browser alert) ---
+function showCustomAlert(message, type = 'error') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customAlertModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customAlertModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : (type === 'info' ? 'ℹ️' : '✓'));
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : (type === 'info' ? 'text-blue-600' : 'text-green-600'));
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <button class="customAlertOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        OK
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Close on OK button click
+        modal.querySelector('.customAlertOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve();
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve();
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
+// --- Custom Confirm Modal (replaces browser confirm) ---
+function showCustomConfirm(message, type = 'warning') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customConfirmModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customConfirmModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : 'ℹ️');
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : 'text-blue-600');
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <div class="flex gap-2">
+                        <button class="customConfirmCancel w-full bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 transition">
+                            Cancel
+                        </button>
+                        <button class="customConfirmOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Handle button clicks
+        modal.querySelector('.customConfirmOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve(true);
+        });
+        
+        modal.querySelector('.customConfirmCancel').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve(false);
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve(false);
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const staffSelect = document.getElementById('staffSelect');
     const monthSelect = document.getElementById('monthSelect');
@@ -295,12 +399,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const month = monthSelect.value;
 
         if (!staffId) {
-            alert('Please select a staff member');
+            showCustomAlert('Please select a staff member', 'warning');
             return;
         }
 
         if (!month) {
-            alert('Please select a month');
+            showCustomAlert('Please select a month', 'warning');
             return;
         }
 
@@ -340,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
     printBtn.addEventListener('click', function() {
         // Check if payslip is loaded and visible
         if (payslipContainer.classList.contains('hidden') || !payslipContent.innerHTML.trim()) {
-            alert('Please load a payslip first by clicking "View Payslip"');
+            showCustomAlert('Please load a payslip first by clicking "View Payslip"', 'warning');
             return;
         }
         
@@ -399,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const staffId = staffSelect.value;
         const month = monthSelect.value;
         if (!staffId || !month) {
-            alert('Please select both staff member and month');
+            showCustomAlert('Please select both staff member and month', 'warning');
             return;
         }
 
@@ -412,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (!response.ok || !data.success) {
-                alert(data.message || 'Payslip is not available for export');
+                showCustomAlert(data.message || 'Payslip is not available for export', 'error');
                 return;
             }
 
@@ -420,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = `/admin/payslip/${staffId}/${month}/pdf`;
         } catch (error) {
             console.error(error);
-            alert('Error exporting payslip. Please try again.');
+            showCustomAlert('Error exporting payslip. Please try again.', 'error');
         }
     });
 
@@ -428,12 +532,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const staffId = staffSelect.value;
         const month = monthSelect.value;
         if (!staffId || !month) {
-            alert('Please select both staff member and month');
+            showCustomAlert('Please select both staff member and month', 'warning');
             return;
         }
 
         // Confirm before sending
-        if (!confirm('Send payslip via email to the staff member?')) {
+        const confirmed = await showCustomConfirm('Send payslip via email to the staff member?', 'info');
+        if (!confirmed) {
             return;
         }
 
@@ -446,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const checkData = await checkResponse.json();
             
             if (!checkResponse.ok || !checkData.success) {
-                alert(checkData.message || 'Payslip is not available to send');
+                showCustomAlert(checkData.message || 'Payslip is not available to send', 'error');
                 return;
             }
 
@@ -461,13 +566,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data.success) {
-                alert('✓ ' + (data.message || 'Email sent successfully'));
+                showCustomAlert('✓ ' + (data.message || 'Email sent successfully'), 'success');
             } else {
-                alert('✗ ' + (data.message || 'Failed to send email'));
+                showCustomAlert('✗ ' + (data.message || 'Failed to send email'), 'error');
             }
         } catch (error) {
             console.error(error);
-            alert('Error sending email. Please try again.');
+            showCustomAlert('Error sending email. Please try again.', 'error');
         }
     });
 });

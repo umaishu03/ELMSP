@@ -59,21 +59,12 @@
 </div>
 
 
-<!-- Success/Error Messages -->
+<!-- Success Messages -->
 @if(session('success'))
     <div class="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
         <div class="flex items-start">
             <i class="fas fa-check-circle mr-2 mt-1"></i>
             <div>{!! session('success') !!}</div>
-        </div>
-    </div>
-@endif
-
-@if(session('error'))
-    <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        <div class="flex items-start">
-            <i class="fas fa-exclamation-circle mr-2 mt-1"></i>
-            <div>{!! session('error') !!}</div>
         </div>
     </div>
 @endif
@@ -101,6 +92,9 @@
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
                         Department
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        Hire Date
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
                         Role
@@ -153,6 +147,15 @@
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">
+                            @if($user->staff && $user->staff->hire_date)
+                                {{ \Carbon\Carbon::parse($user->staff->hire_date)->format('d M Y') }}
+                            @else
+                                N/A
+                            @endif
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
                         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $user->role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800' }}">
                             {{ ucfirst($user->role) }}
                         </span>
@@ -180,7 +183,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                         No staff members found. Upload a CSV file to add staff members.
                     </td>
                 </tr>
@@ -313,6 +316,53 @@
 </div>
 
 <script>
+// --- Custom Alert Modal (replaces browser alert) ---
+function showCustomAlert(message, type = 'error') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customAlertModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customAlertModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : (type === 'info' ? 'ℹ️' : '✓'));
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : (type === 'info' ? 'text-blue-600' : 'text-green-600'));
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <button class="customAlertOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        OK
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Close on OK button click
+        modal.querySelector('.customAlertOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve();
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve();
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('csv_file');
     const fileNameSpan = document.getElementById('file-name');
@@ -411,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!noResultsRow) {
                     noResultsRow = document.createElement('tr');
                     noResultsRow.className = 'no-results-row';
-                    noResultsRow.innerHTML = '<td colspan="6" class="px-6 py-4 text-center text-gray-500">No staff members found matching your search.</td>';
+                    noResultsRow.innerHTML = '<td colspan="7" class="px-6 py-4 text-center text-gray-500">No staff members found matching your search.</td>';
                     tbody.appendChild(noResultsRow);
                 }
             } else if (noResultsRow) {
@@ -814,15 +864,17 @@ function submitEditForm(event, userId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Staff updated successfully!');
-            location.reload();
+            showCustomAlert('Staff updated successfully!', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         } else {
-            alert('Error: ' + (data.error || 'Failed to update staff'));
+            showCustomAlert('Error: ' + (data.error || 'Failed to update staff'), 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Error updating staff. Please try again.');
+        showCustomAlert('Error updating staff. Please try again.', 'error');
     });
 }
 

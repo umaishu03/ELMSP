@@ -250,6 +250,53 @@
 </style>
 
 <script>
+// --- Custom Alert Modal (replaces browser alert) ---
+function showCustomAlert(message, type = 'error') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customAlertModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customAlertModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : (type === 'info' ? 'ℹ️' : '✓'));
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : (type === 'info' ? 'text-blue-600' : 'text-green-600'));
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <button class="customAlertOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        OK
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Close on OK button click
+        modal.querySelector('.customAlertOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve();
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve();
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const monthSelect = document.getElementById('monthSelect');
     const viewBtn = document.getElementById('viewPayslipBtn');
@@ -306,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
     printBtn.addEventListener('click', function() {
         // Check if payslip is loaded and visible
         if (payslipContainer.classList.contains('hidden') || !payslipContent.innerHTML.trim()) {
-            alert('Please load a payslip first by clicking "View Payslip"');
+            showCustomAlert('Please load a payslip first by clicking "View Payslip"', 'warning');
             return;
         }
         

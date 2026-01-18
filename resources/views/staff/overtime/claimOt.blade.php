@@ -390,13 +390,60 @@
 </div>
 
 <script>
+// --- Custom Alert Modal (replaces browser alert) ---
+function showCustomAlert(message, type = 'error') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customAlertModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customAlertModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : (type === 'info' ? 'ℹ️' : '✓'));
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : (type === 'info' ? 'text-blue-600' : 'text-green-600'));
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <button class="customAlertOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        OK
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Close on OK button click
+        modal.querySelector('.customAlertOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve();
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve();
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
 // Show/Hide OT Summary Section
 document.getElementById('viewOTButton').addEventListener('click', function() {
     const month = document.getElementById('claimMonth').value;
     if (month) {
         document.getElementById('otSummarySection').classList.remove('hidden');
     } else {
-        alert('Please select a month first');
+        showCustomAlert('Please select a month first', 'warning');
     }
 });
 
@@ -593,7 +640,7 @@ document.getElementById('claimOvertimeForm').addEventListener('submit', function
     const confirmClaim = document.querySelector('input[name="confirm_claim"]:checked');
     if (!confirmClaim || confirmClaim.value !== 'yes') {
         e.preventDefault();
-        alert('Please confirm that you want to claim the selected overtime.');
+        showCustomAlert('Please confirm that you want to claim the selected overtime.', 'warning');
         return false;
     }
 
@@ -613,7 +660,7 @@ document.getElementById('claimOvertimeForm').addEventListener('submit', function
 
     if (!available) {
         e.preventDefault();
-        alert('You do not have enough overtime hours selected/available to make this type of claim.');
+        showCustomAlert('You do not have enough overtime hours selected/available to make this type of claim.', 'error');
         return false;
     }
 

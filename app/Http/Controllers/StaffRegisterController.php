@@ -77,34 +77,45 @@ class StaffRegisterController extends Controller
                     $createdUsers[] = $user;
                     $createdCount++;
                 } catch (\Exception $e) {
-                    // Only add error if it's not already in the errors array (avoid duplicates)
-                    $errorMessage = "Row " . ($offset + 2) . ": Failed to create user - " . $e->getMessage();
-                    if (!in_array($errorMessage, $errors)) {
-                        $errors[] = $errorMessage;
+                    // Check if error is about duplicate staff (email or employee ID already exists)
+                    $errorMessage = $e->getMessage();
+                    $isDuplicate = strpos($errorMessage, 'already exists') !== false;
+                    
+                    // Only add error if it's NOT a duplicate (silently skip duplicates)
+                    if (!$isDuplicate) {
+                        $errorMessage = "Row " . ($offset + 2) . ": Failed to create user - " . $errorMessage;
+                        if (!in_array($errorMessage, $errors)) {
+                            $errors[] = $errorMessage;
+                        }
                     }
+                    // If it's a duplicate, silently skip it (don't add to errors)
                 }
             }
             
             $failedCount = count($errors);
 
-            // Always build a summary including both success and failure counts
-            $summary = "Import finished. Successful: {$createdCount}. Failed: {$failedCount}.";
-
-            // Build success details list
-            $successMessage = $summary;
+            // Build success message - only show if new staff were created
+            $successMessage = '';
             if ($createdCount > 0) {
-                $successMessage .= "<br><br>Created users:<br>" . implode('<br>', array_map(function($user) {
+                $successMessage = "Successfully created {$createdCount} new staff member(s):<br><br>" . implode('<br>', array_map(function($user) {
                     $emailStatus = isset($user->email_sent) && $user->email_sent ?
                         '<span style="color: green;">✓ Email sent</span>' :
                         '<span style="color: red;">✗ Email failed</span>';
                     return "• {$user->name} ({$user->email}) - {$user->role} - {$emailStatus}";
                 }, $createdUsers));
+            } else {
+                // If no new staff created, show a simple message
+                $successMessage = "No new staff members were created. All staff in the CSV already exist in the system.";
             }
 
-            $redirect = redirect()->route('admin.manage-staff')->with('success', $successMessage);
+            $redirect = redirect()->route('admin.manage-staff');
 
-            // Include detailed error list (row + message) when any failures occurred
-            // Remove duplicates before displaying
+            // Only show success message if there are new staff or if all were duplicates
+            if ($createdCount > 0 || ($createdCount === 0 && $failedCount === 0)) {
+                $redirect = $redirect->with('success', $successMessage);
+            }
+
+            // Include detailed error list only for non-duplicate errors (validation errors, etc.)
             if ($failedCount > 0) {
                 $uniqueErrors = array_unique($errors);
                 $errorDetails = implode('<br>', $uniqueErrors);
@@ -209,7 +220,17 @@ class StaffRegisterController extends Controller
         // Step 7: Role-Specific Record Creation
         // Note: Admin users don't need separate records - role is stored in users.role
         if ($role === 'staff') {
-            $this->createStaffRecord($user, $employeeId, $department);
+            $hireDate = null;
+            // Check if hire_date is provided in CSV
+            if (!empty($record['hire_date'])) {
+                try {
+                    $hireDate = \Carbon\Carbon::parse($record['hire_date'])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    // If date parsing fails, leave it as null
+                    $hireDate = null;
+                }
+            }
+            $this->createStaffRecord($user, $employeeId, $department, $hireDate);
         }
         // Admin role users are identified by users.role = 'admin' only
         
@@ -231,7 +252,7 @@ class StaffRegisterController extends Controller
     /**
      * Create staff record
      */
-    private function createStaffRecord($user, $employeeId, $department)
+    private function createStaffRecord($user, $employeeId, $department, $hireDate = null)
     {
         // Note: Department limit is already checked in validateRecord()
         // This is just a safety check in case validation was bypassed
@@ -244,7 +265,7 @@ class StaffRegisterController extends Controller
             'user_id' => $user->id,
             'employee_id' => $employeeId,
             'department' => $department,
-            'hire_date' => now(),
+            'hire_date' => $hireDate, // Use provided hire_date or null (not auto-set to now())
             'salary' => $this->getDefaultSalary($department),
             'status' => 'active',
         ]);

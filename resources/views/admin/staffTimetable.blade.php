@@ -346,6 +346,110 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = window.location.pathname + qs;
     }
 
+    // --- Custom Alert Modal (replaces browser alert) ---
+    function showCustomAlert(message, type = 'error') {
+        return new Promise((resolve) => {
+            // Create modal if it doesn't exist
+            let modal = document.getElementById('customAlertModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'customAlertModal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+                document.body.appendChild(modal);
+            }
+            
+            // Create modal content
+            const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : (type === 'info' ? 'ℹ️' : '✓'));
+            const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : (type === 'info' ? 'text-blue-600' : 'text-green-600'));
+            
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <div class="p-6">
+                        <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                        <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                        <button class="customAlertOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                            OK
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Close on OK button click
+            modal.querySelector('.customAlertOk').addEventListener('click', function() {
+                modal.classList.add('hidden');
+                resolve();
+            });
+            
+            // Close on outside click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    resolve();
+                }
+            });
+            
+            // Show modal
+            modal.classList.remove('hidden');
+        });
+    }
+    
+    // --- Custom Confirm Modal (replaces browser confirm) ---
+    function showCustomConfirm(message, type = 'warning') {
+        return new Promise((resolve) => {
+            // Create modal if it doesn't exist
+            let modal = document.getElementById('customConfirmModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'customConfirmModal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+                document.body.appendChild(modal);
+            }
+            
+            // Create modal content
+            const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : 'ℹ️');
+            const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : 'text-blue-600');
+            
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                    <div class="p-6">
+                        <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                        <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                        <div class="flex gap-2">
+                            <button class="customConfirmCancel w-full bg-gray-300 text-gray-800 py-2 rounded-lg hover:bg-gray-400 transition">
+                                Cancel
+                            </button>
+                            <button class="customConfirmOk w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Handle button clicks
+            modal.querySelector('.customConfirmOk').addEventListener('click', function() {
+                modal.classList.add('hidden');
+                resolve(true);
+            });
+            
+            modal.querySelector('.customConfirmCancel').addEventListener('click', function() {
+                modal.classList.add('hidden');
+                resolve(false);
+            });
+            
+            // Close on outside click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    resolve(false);
+                }
+            });
+            
+            // Show modal
+            modal.classList.remove('hidden');
+        });
+    }
+
     // --- Toast Notification System ---
     function showToast(message, subMessage = '', type = 'success') {
         const toast = document.getElementById('toast');
@@ -769,7 +873,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (assignShiftsBtnAjax) {
         assignShiftsBtnAjax.addEventListener('click', async function() {
             if (selectedDays.size === 0) {
-                alert('Please select at least one day to assign shifts.');
+                showCustomAlert('Please select at least one day to assign shifts.', 'warning');
                 return;
             }
 
@@ -777,7 +881,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const userSelect = document.getElementById('assignUsers');
             const selectedUserIds = Array.from(userSelect.selectedOptions).map(o => o.value);
             if (selectedUserIds.length === 0) {
-                alert('Please select at least one employee to assign shifts.');
+                showCustomAlert('Please select at least one employee to assign shifts.', 'warning');
                 return;
             }
 
@@ -788,7 +892,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isRestDay = (document.getElementById('assignRestDay') && document.getElementById('assignRestDay').checked) ? true : false;
 
             if (!isRestDay && (!startTime || !endTime)) {
-                alert('Please provide both start and end times (or check Rest Day).');
+                showCustomAlert('Please provide both start and end times (or check Rest Day).', 'warning');
                 return;
             }
 
@@ -796,14 +900,32 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isRestDay) {
                 const startValidation = validateTimeRange(startTime);
                 if (!startValidation.valid) {
-                    alert(startValidation.message);
+                    showCustomAlert(startValidation.message, 'error');
                     return;
                 }
                 
                 const endValidation = validateTimeRange(endTime);
                 if (!endValidation.valid) {
-                    alert(endValidation.message);
+                    showCustomAlert(endValidation.message, 'error');
                     return;
+                }
+                
+                // Validate hours match expected hours
+                const totalShiftHours = calculateTotalShiftHours(startTime, endTime);
+                if (totalShiftHours !== null) {
+                    const normalWorkHours = getNormalHours(departmentInput);
+                    const expectedTotalHours = calculateExpectedTotalHours(normalWorkHours, breakMinutes);
+                    const diff = totalShiftHours - expectedTotalHours;
+                    
+                    // Block assignment if hours don't match (over or under)
+                    if (Math.abs(diff) >= 0.1) {
+                        const diffFormatted = formatHours(Math.abs(diff));
+                        const direction = diff > 0 ? 'over' : 'under';
+                        const expectedFormatted = formatHours(expectedTotalHours);
+                        const actualFormatted = formatHours(totalShiftHours);
+                        showCustomAlert(`Cannot assign shift: Hours ${direction} expected!\n\nActual: ${actualFormatted}\nExpected: ${expectedFormatted}\nDifference: ${diffFormatted} ${direction}\n\nPlease adjust the start/end time or break duration to match the expected hours.`, 'error');
+                        return;
+                    }
                 }
             }
 
@@ -858,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             if (conflicts.length) {
-                alert('Cannot assign shifts because conflicts were detected:\n' + conflicts.join('\n'));
+                showCustomAlert('Cannot assign shifts because conflicts were detected:\n' + conflicts.join('\n'), 'error');
                 return;
             }
 
@@ -989,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         );
                         // Still show alert for detailed error info
                         setTimeout(() => {
-                            alert(`Assigned ${successItems.length} shifts. ${failures.length} failed:\n` + msgs.join('\n'));
+                            showCustomAlert(`Assigned ${successItems.length} shifts. ${failures.length} failed:\n` + msgs.join('\n'), 'warning');
                         }, 500);
                     } else {
                         showToast(
@@ -1007,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         'error'
                     );
                     setTimeout(() => {
-                        alert('Error assigning shifts. See console for details.');
+                        showCustomAlert('Error assigning shifts. See console for details.', 'error');
                     }, 500);
                 } finally {
                     assignShiftsBtnAjax.disabled = false;
@@ -1182,20 +1304,20 @@ document.addEventListener('DOMContentLoaded', function() {
         assignEditBtn.addEventListener('click', async function() {
             const shiftId = document.getElementById('assignEditShiftId').value;
             if (!shiftId) {
-                alert('No shift selected to edit. Click an existing shift cell first.');
+                showCustomAlert('No shift selected to edit. Click an existing shift cell first.', 'warning');
                 return;
             }
 
             // require exactly one user selected
             const selectedUserIds = Array.from(document.getElementById('assignUsers').selectedOptions).map(o => o.value);
             if (selectedUserIds.length !== 1) {
-                alert('Please select exactly one employee to edit.');
+                showCustomAlert('Please select exactly one employee to edit.', 'warning');
                 return;
             }
 
             // require exactly one day selected
             if (selectedDays.size !== 1) {
-                alert('Please select exactly one day to edit.');
+                showCustomAlert('Please select exactly one day to edit.', 'warning');
                 return;
             }
 
@@ -1206,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isRestDay = (document.getElementById('assignRestDay') && document.getElementById('assignRestDay').checked) ? true : false;
 
             if (!isRestDay && (!startTime || !endTime)) {
-                alert('Please provide both start and end times (or check Rest Day).');
+                showCustomAlert('Please provide both start and end times (or check Rest Day).', 'warning');
                 return;
             }
 
@@ -1214,14 +1336,32 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isRestDay) {
                 const startValidation = validateTimeRange(startTime);
                 if (!startValidation.valid) {
-                    alert(startValidation.message);
+                    showCustomAlert(startValidation.message, 'error');
                     return;
                 }
                 
                 const endValidation = validateTimeRange(endTime);
                 if (!endValidation.valid) {
-                    alert(endValidation.message);
+                    showCustomAlert(endValidation.message, 'error');
                     return;
+                }
+                
+                // Validate hours match expected hours
+                const totalShiftHours = calculateTotalShiftHours(startTime, endTime);
+                if (totalShiftHours !== null) {
+                    const normalWorkHours = getNormalHours(departmentInput);
+                    const expectedTotalHours = calculateExpectedTotalHours(normalWorkHours, breakMinutes);
+                    const diff = totalShiftHours - expectedTotalHours;
+                    
+                    // Block assignment if hours don't match (over or under)
+                    if (Math.abs(diff) >= 0.1) {
+                        const diffFormatted = formatHours(Math.abs(diff));
+                        const direction = diff > 0 ? 'over' : 'under';
+                        const expectedFormatted = formatHours(expectedTotalHours);
+                        const actualFormatted = formatHours(totalShiftHours);
+                        showCustomAlert(`Cannot update shift: Hours ${direction} expected!\n\nActual: ${actualFormatted}\nExpected: ${expectedFormatted}\nDifference: ${diffFormatted} ${direction}\n\nPlease adjust the start/end time or break duration to match the expected hours.`, 'error');
+                        return;
+                    }
                 }
             }
 
@@ -1379,7 +1519,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'error'
                 );
                 setTimeout(() => {
-                    alert('Error updating shift');
+                    showCustomAlert('Error updating shift', 'error');
                 }, 500);
             } finally {
                 assignEditBtn.disabled = false;
@@ -1407,12 +1547,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const isRestDay = assignRestDayCheckbox && assignRestDayCheckbox.checked;
 
             if (!userId || !date) {
-                alert('Please fill user and date.');
+                showCustomAlert('Please fill user and date.', 'warning');
                 return;
             }
 
             if (!isRestDay && (!start_time || !end_time)) {
-                alert('Please fill start and end time (or check Rest Day).');
+                showCustomAlert('Please fill start and end time (or check Rest Day).', 'warning');
                 return;
             }
 
@@ -1420,14 +1560,33 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isRestDay) {
                 const startValidation = validateTimeRange(start_time);
                 if (!startValidation.valid) {
-                    alert(startValidation.message);
+                    showCustomAlert(startValidation.message, 'error');
                     return;
                 }
                 
                 const endValidation = validateTimeRange(end_time);
                 if (!endValidation.valid) {
-                    alert(endValidation.message);
+                    showCustomAlert(endValidation.message, 'error');
                     return;
+                }
+                
+                // Validate hours match expected hours
+                const totalShiftHours = calculateTotalShiftHours(start_time, end_time);
+                if (totalShiftHours !== null) {
+                    const department = document.getElementById('editDepartment') ? document.getElementById('editDepartment').value : (document.getElementById('assignDepartment') ? document.getElementById('assignDepartment').value : 'General');
+                    const normalWorkHours = getNormalHours(department);
+                    const expectedTotalHours = calculateExpectedTotalHours(normalWorkHours, break_minutes);
+                    const diff = totalShiftHours - expectedTotalHours;
+                    
+                    // Block assignment if hours don't match (over or under)
+                    if (Math.abs(diff) >= 0.1) {
+                        const diffFormatted = formatHours(Math.abs(diff));
+                        const direction = diff > 0 ? 'over' : 'under';
+                        const expectedFormatted = formatHours(expectedTotalHours);
+                        const actualFormatted = formatHours(totalShiftHours);
+                        showCustomAlert(`Cannot save shift: Hours ${direction} expected!\n\nActual: ${actualFormatted}\nExpected: ${expectedFormatted}\nDifference: ${diffFormatted} ${direction}\n\nPlease adjust the start/end time or break duration to match the expected hours.`, 'error');
+                        return;
+                    }
                 }
             }
 
@@ -1584,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'error'
                 );
                 setTimeout(() => {
-                    alert('Error saving shift');
+                    showCustomAlert('Error saving shift', 'error');
                 }, 500);
             } finally {
                 editSaveBtn.disabled = false;
@@ -1596,10 +1755,13 @@ document.addEventListener('DOMContentLoaded', function() {
         editDeleteBtn.addEventListener('click', async function() {
             const shiftId = document.getElementById('editShiftId').value;
             if (!shiftId) {
-                alert('No shift to delete.');
+                await showCustomAlert('No shift to delete.', 'warning');
                 return;
             }
-            if (!confirm('Delete this shift?')) return;
+            
+            // Use custom confirm modal
+            const confirmDelete = await showCustomConfirm('Are you sure you want to delete this shift?', 'warning');
+            if (!confirmDelete) return;
 
             try {
                 editDeleteBtn.disabled = true;
@@ -1613,7 +1775,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const json = await res.json().catch(() => ({}));
                 if (!res.ok || !json.success) {
-                    alert(json.message || 'Failed to delete shift');
+                    showCustomAlert(json.message || 'Failed to delete shift', 'error');
                     return;
                 }
 
@@ -1642,7 +1804,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'error'
                 );
                 setTimeout(() => {
-                    alert('Error deleting shift');
+                    showCustomAlert('Error deleting shift', 'error');
                 }, 500);
             } finally {
                 editDeleteBtn.disabled = false;

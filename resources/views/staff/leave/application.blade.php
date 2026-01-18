@@ -270,6 +270,53 @@
 </div>
 
 <script>
+// --- Custom Alert Modal (replaces browser alert) ---
+function showCustomAlert(message, type = 'error') {
+    return new Promise((resolve) => {
+        // Create modal if it doesn't exist
+        let modal = document.getElementById('customAlertModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'customAlertModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden';
+            document.body.appendChild(modal);
+        }
+        
+        // Create modal content
+        const icon = type === 'error' ? '⚠️' : (type === 'warning' ? '⚠️' : (type === 'info' ? 'ℹ️' : '✓'));
+        const iconColor = type === 'error' ? 'text-red-600' : (type === 'warning' ? 'text-yellow-600' : (type === 'info' ? 'text-blue-600' : 'text-green-600'));
+        
+        modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                <div class="p-6">
+                    <div class="text-4xl mb-4 text-center ${iconColor}">${icon}</div>
+                    <div class="text-gray-800 text-center mb-6 whitespace-pre-line">${message}</div>
+                    <button class="customAlertOk w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        OK
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Close on OK button click
+        modal.querySelector('.customAlertOk').addEventListener('click', function() {
+            modal.classList.add('hidden');
+            resolve();
+        });
+        
+        // Close on outside click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                resolve();
+            }
+        });
+        
+        // Show modal
+        modal.classList.remove('hidden');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const leaveTypeSelect = document.getElementById('leaveType');
     const entitlementCard = document.getElementById('leaveEntitlementCard');
@@ -361,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (weekendDates.length > 0) {
             const dateStr = weekendDates.map(d => d.toLocaleDateString()).join(', ');
-            alert(`Warning: Your leave period includes weekend dates (${dateStr}). Normal leave applications are not permitted on weekends. Only Emergency Leave, Medical Leave (with MC), and Hospitalization Leave are allowed on weekends.`);
+            showCustomAlert(`Warning: Your leave period includes weekend dates (${dateStr}). Normal leave applications are not permitted on weekends. Only Emergency Leave, Medical Leave (with MC), and Hospitalization Leave are allowed on weekends.`, 'warning');
         }
     }
 
@@ -400,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (conflictingDates.length > 0) {
             const dateStr = conflictingDates.map(d => d.toLocaleDateString()).join(', ');
-            alert(`Warning: Your leave period includes dates where you have approved overtime (${dateStr}). Leave applications cannot be approved on the same date(s) as approved overtime. Please choose different dates or cancel your overtime first.`);
+            showCustomAlert(`Warning: Your leave period includes dates where you have approved overtime (${dateStr}). Leave applications cannot be approved on the same date(s) as approved overtime. Please choose different dates or cancel your overtime first.`, 'warning');
         }
     }
 
