@@ -26,8 +26,8 @@ Route::get('/', function () {
 });
 
 // Simple login route without middleware for testing
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::get('/login-elmsp', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login-elmsp', [AuthController::class, 'login']);
 
 // Password reset routes
 Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
