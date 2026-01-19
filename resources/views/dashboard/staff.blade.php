@@ -315,8 +315,8 @@ $otClaimsStatus = [
                     $isApproved = $status === 'approved';
                     $isRejected = $status === 'rejected';
                 @endphp
-                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : ($isRejected ? 'bg-red-50 border border-red-200' : 'bg-green-50') }} rounded {{ $isApproved ? 'hover:bg-green-100' : ($isRejected ? 'hover:bg-red-100' : 'hover:bg-green-100') }} transition cursor-pointer text-xs md:text-sm">
-                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : ($isRejected ? 'bg-red-500' : 'bg-green-500') }} rounded-full flex-shrink-0"></div>
+                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : ($isRejected ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200') }} rounded {{ $isApproved ? 'hover:bg-green-100' : ($isRejected ? 'hover:bg-red-100' : 'hover:bg-yellow-100') }} transition cursor-pointer text-xs md:text-sm">
+                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : ($isRejected ? 'bg-red-500' : 'bg-yellow-500') }} rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <p class="font-semibold text-gray-800 truncate">{{ $claim->created_at->format('F Y') }} - RM {{ number_format($totalPay, 2) }}</p>
@@ -465,8 +465,8 @@ $otClaimsStatus = [
                 $status = strtolower($claim->status ?? 'pending');
                 $isApproved = $status === 'approved';
                 $isRejected = $status === 'rejected';
-                $bgColor = $isApproved ? 'bg-green-50' : ($isRejected ? 'bg-red-50' : 'bg-green-50');
-                $borderColor = $isApproved ? 'border-green-500' : ($isRejected ? 'border-red-500' : 'border-green-300');
+                $bgColor = $isApproved ? 'bg-green-50' : ($isRejected ? 'bg-red-50' : 'bg-yellow-50');
+                $borderColor = $isApproved ? 'border-green-500' : ($isRejected ? 'border-red-500' : 'border-yellow-300');
             @endphp
             <div class="p-6 {{ $bgColor }} border-l-4 {{ $borderColor }}">
                 <div class="flex items-start justify-between">
@@ -475,7 +475,7 @@ $otClaimsStatus = [
                             @php
                                 $status = strtolower($claim->status ?? 'pending');
                                 $statusLabel = $status === 'approved' ? '✓ Approved' : ($status === 'pending' ? 'Pending Review' : ucfirst($status));
-                                $statusClass = $status === 'approved' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+                                $statusClass = $status === 'approved' ? 'bg-green-100 text-green-800' : ($status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800');
                                 $payrollAmounts = $claim->calculatePayrollAmounts();
                                 $totalHours = ($payrollAmounts['fulltime_hours'] ?? 0) + ($payrollAmounts['public_holiday_hours'] ?? 0);
                                 $totalPay = $payrollAmounts['total_pay'] ?? 0;
