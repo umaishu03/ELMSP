@@ -13,14 +13,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        :root {
-            --sidebar-width: 16rem;
-        }
-
-        body {
-            overflow-x: hidden;
-        }
-
         .gradient-header {
             background: #dbeafe;
         }
@@ -42,47 +34,6 @@
             background-color: #3b82f6 !important;
             border-left: 4px solid #fbbf24;
             color: #fbbf24 !important;
-        }
-
-        #sidebar {
-            width: var(--sidebar-width);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            transform: translateX(0);
-        }
-
-        #mainContent {
-            transition: margin-left 0.3s ease, padding 0.2s ease;
-        }
-
-        /* Desktop collapse */
-        @media (min-width: 1024px) {
-            #mainContent {
-                margin-left: var(--sidebar-width);
-            }
-            #sidebar.collapsed {
-                transform: translateX(-100%);
-            }
-            #mainContent.collapsed {
-                margin-left: 0 !important;
-            }
-        }
-
-        /* Mobile default hidden sidebar */
-        @media (max-width: 1023px) {
-            #sidebar {
-                transform: translateX(-100%);
-                box-shadow: none;
-            }
-            #sidebar.active {
-                transform: translateX(0);
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-            }
-            #mainContent {
-                margin-left: 0 !important;
-            }
-            header.gradient-header {
-                padding-inline: 1rem;
-            }
         }
         .fa-chevron-right {
             transition: transform 0.3s ease;
@@ -219,9 +170,6 @@
             </nav>
         </aside>
 
-        <!-- Overlay (mobile) -->
-        <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-40 z-30 hidden lg:hidden"></div>
-
         <!-- Main Content -->
         <main class="flex-1 p-8">
             <div id="mainContent" class="mt-20 ml-64 transition-all duration-300">
@@ -243,23 +191,17 @@
         document.getElementById('sidebarToggle').addEventListener('click', function() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
-            const overlay = document.getElementById('sidebar-overlay');
-            const isDesktop = () => window.innerWidth >= 1024;
-
-            if (isDesktop()) {
-                const collapsed = sidebar.classList.toggle('collapsed');
-                mainContent.classList.toggle('collapsed', collapsed);
+            const isHidden = sidebar.classList.contains('-ml-64');
+            
+            if (isHidden) {
+                sidebar.classList.remove('-ml-64');
+                mainContent.classList.remove('ml-0');
+                mainContent.classList.add('ml-64');
             } else {
-                const isActive = sidebar.classList.toggle('active');
-                overlay.classList.toggle('hidden', !isActive);
+                sidebar.classList.add('-ml-64');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-0');
             }
-        });
-
-        // Close sidebar on overlay click (mobile)
-        document.getElementById('sidebar-overlay').addEventListener('click', function() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.remove('active');
-            this.classList.add('hidden');
         });
 
         // User menu toggle functionality
@@ -283,16 +225,14 @@
         function handleResize() {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');
-            const overlay = document.getElementById('sidebar-overlay');
-
             if (window.innerWidth < 768) {
-                sidebar.classList.remove('collapsed');
-                sidebar.classList.remove('active');
-                mainContent.classList.remove('collapsed');
-                overlay.classList.add('hidden');
+                sidebar.classList.add('-ml-64');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-0');
             } else {
-                sidebar.classList.remove('active');
-                overlay.classList.add('hidden');
+                sidebar.classList.remove('-ml-64');
+                mainContent.classList.remove('ml-0');
+                mainContent.classList.add('ml-64');
             }
         }
 
