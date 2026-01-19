@@ -109,6 +109,26 @@ $pendingReplacementCount = OTClaim::query()->replacementLeave()->pending()->coun
 $pendingReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('created_at','desc')->take(3)->get();
 // Full replacement list for the expandable section
 $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('created_at','desc')->get();
+
+// Status of (approved/rejected) overtime requests
+$actionedOvertimes = Overtime::whereIn('status', ['approved', 'rejected'])
+    ->with('staff.user')
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+// Status of (approved/rejected) salary claims
+$actionedPayrolls = OTClaim::query()
+    ->payroll()
+    ->whereIn('status', ['approved', 'rejected'])
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+// Status of (approved/rejected) replacement leave claims
+$actionedReplacements = OTClaim::query()
+    ->replacementLeave()
+    ->whereIn('status', ['approved', 'rejected'])
+    ->orderBy('created_at', 'desc')
+    ->get();
 ?>
 
 <div class="mb-6">
@@ -237,9 +257,12 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                 @empty
                 <div class="text-xs text-gray-600">No pending overtime requests</div>
                 @endforelse
-                <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button type="button" onclick="showOvertimeSection()" class="block w-full text-center text-xs font-semibold text-orange-600 hover:text-orange-700 transition">
-                        View All →
+                <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <button type="button" onclick="showOvertimeSection()" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow-sm">
+                        View Request
+                    </button>
+                    <button type="button" onclick="showActionedOvertimeSection()" class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow-sm">
+                        View Status
                     </button>
                 </div>
             </div>
@@ -285,9 +308,12 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                 @empty
                 <div class="text-xs text-gray-600">No pending payroll claims</div>
                 @endforelse
-                <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button type="button" onclick="showSalarySection()" class="block w-full text-center text-xs font-semibold text-green-600 hover:text-green-700 transition">
-                        View All →
+                <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <button type="button" onclick="showSalarySection()" class="w-full bg-green-500 hover:bg-green-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow-sm">
+                        View Request 
+                    </button>
+                    <button type="button" onclick="showActionedSalarySection()" class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow-sm">
+                        View Status
                     </button>
                 </div>
             </div>
@@ -302,7 +328,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
                 <h2 class="text-sm md:text-lg font-bold text-white flex items-center gap-2">
-                    <span>Replacement Leave</span>
+                    <span>Replacement Leave Claims</span>
                     <span class="bg-white text-purple-600 text-xs font-bold px-2.5 py-1 rounded-full" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
                         {{ $pendingReplacementCount }}
                     </span>
@@ -335,9 +361,12 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                 @empty
                 <div class="text-xs text-gray-600">No pending replacement leave claims</div>
                 @endforelse
-                <div class="mt-3 pt-3 border-t border-gray-200">
-                    <button type="button" onclick="showLeaveSection()" class="block w-full text-center text-xs font-semibold text-purple-600 hover:text-purple-700 transition">
-                        View All →
+                <div class="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <button type="button" onclick="showLeaveSection()" class="w-full bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow-sm">
+                        View Request 
+                    </button>
+                    <button type="button" onclick="showActionedLeaveSection()" class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow-sm">
+                        View Status 
                     </button>
                 </div>
             </div>
@@ -372,7 +401,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                 <div class="p-6 text-gray-600">No pending overtime requests.</div>
             @else
                 @foreach($allPending as $p)
-                <div class="p-6 bg-orange-50 hover:bg-orange-100 transition cursor-pointer border-l-4 border-orange-500">
+                <div class="p-6 bg-yellow-50 hover:bg-yellow-100 transition cursor-pointer border-l-4 border-yellow-500">
                     <div class="flex items-start justify-between">
                         <div class="flex items-start space-x-4 flex-1">
                             <div class="flex-shrink-0">
@@ -383,7 +412,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <h3 class="font-bold text-gray-900">{{ $p->user->name ?? 'Unknown' }}</h3>
-                                    <span class="bg-orange-100 text-orange-800 text-xs font-semibold px-2 py-0.5 rounded">New</span>
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-0.5 rounded">Pending</span>
                                 </div>
                                 <p class="text-sm text-gray-600 mb-2">Overtime Request - {{ $p->ot_date->format('F d, Y') }}</p>
                                 <p class="text-sm text-gray-700 mb-2">
@@ -470,7 +499,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                         }
                     }
                 @endphp
-                <div class="p-6 {{ $claim->status === 'pending' ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50' }} transition cursor-pointer border-l-4 {{ $claim->status === 'pending' ? 'border-green-500' : 'border-transparent' }}">
+                <div class="p-6 {{ $claim->status === 'pending' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50' }} transition cursor-pointer border-l-4 {{ $claim->status === 'pending' ? 'border-yellow-500' : 'border-transparent' }}">
                     <div class="flex items-start justify-between">
                         <div class="flex items-start space-x-4 flex-1">
                             <div class="flex-shrink-0">
@@ -481,7 +510,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <h3 class="font-bold text-gray-900">{{ $claimUser->name ?? 'Unknown' }}</h3>
-                                    <span class="{{ $claim->status === 'pending' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
+                                    <span class="{{ $claim->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
                                 </div>
                                 @php $amounts = $claim->calculatePayrollAmounts(); @endphp
                                 <p class="text-sm text-gray-600 mb-2">Payroll Claim - {{ $claim->created_at->format('F Y') }}</p>
@@ -586,7 +615,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                         $claimUser = $claim->user;
                     }
                 @endphp
-                <div class="p-6 {{ $claim->status === 'pending' ? 'bg-purple-50 hover:bg-purple-100' : 'hover:bg-gray-50' }} transition cursor-pointer border-l-4 {{ $claim->status === 'pending' ? 'border-purple-500' : 'border-transparent' }}">
+                <div class="p-6 {{ $claim->status === 'pending' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50' }} transition cursor-pointer border-l-4 {{ $claim->status === 'pending' ? 'border-yellow-500' : 'border-transparent' }}">
                     <div class="flex items-start justify-between">
                         <div class="flex items-start space-x-4 flex-1">
                             <div class="flex-shrink-0">
@@ -597,7 +626,7 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
                                     <h3 class="font-bold text-gray-900">{{ $claimUser->name ?? 'Unknown' }}</h3>
-                                    <span class="{{ $claim->status === 'pending' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
+                                    <span class="{{ $claim->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
                                 </div>
                                 <p class="text-sm text-gray-600 mb-2">Replacement Leave Claim - {{ $claim->created_at->format('F Y') }}</p>
                                 <p class="text-sm text-gray-700 mb-2">
@@ -656,6 +685,218 @@ $allReplacements = OTClaim::query()->replacementLeave()->pending()->orderBy('cre
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- Status of Overtime Requests Section (Hidden by default) -->
+<div class="mt-8 hidden" id="actioned-overtime-section">
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div style="background: #f3f4f6;" class="px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h2 class="text-xl font-bold text-gray-800">Status of Overtime Requests</h2>
+            </div>
+            <button onclick="hideActionedOvertimeSection()" class="text-gray-700 hover:text-gray-900 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+            @if($actionedOvertimes->isEmpty())
+                <div class="p-6 text-gray-600">No status overtime requests.</div>
+            @else
+                @foreach($actionedOvertimes as $ot)
+                <div class="p-6 hover:bg-gray-50 transition border-l-4 {{ $ot->status === 'approved' ? 'border-green-500' : 'border-red-500' }}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start space-x-4 flex-1">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                                    {{ strtoupper(substr($ot->user->name ?? 'U', 0, 2)) }}
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h3 class="font-bold text-gray-900">{{ $ot->user->name ?? 'Unknown' }}</h3>
+                                    <span class="{{ $ot->status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($ot->status) }}</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-2">Overtime Request - {{ $ot->ot_date->format('F d, Y') }}</p>
+                                <p class="text-sm text-gray-700 mb-2">
+                                    <span class="font-semibold">Duration:</span> {{ number_format($ot->hours,1) }} hours |
+                                    <span class="font-semibold ml-2">Date:</span> {{ $ot->ot_date->format('M d, Y') }} |
+                                    <span class="font-semibold ml-2">Type:</span> {{ ucfirst($ot->ot_type) }}
+                                </p>
+                                @if($ot->remarks)
+                                <p class="text-sm text-gray-600">{{ $ot->remarks }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end space-y-2 ml-4">
+                            <span class="text-xs text-gray-500">{{ $ot->created_at->diffForHumans() }}</span>
+                            <span class="text-xs {{ $ot->status === 'approved' ? 'text-green-600' : 'text-red-600' }} font-semibold">✓ {{ ucfirst($ot->status) }}</span>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            @endif
+        </div>
+    </div>
+</div>
+
+<!-- Status of Salary Claims Section (Hidden by default) -->
+<div class="mt-8 hidden" id="actioned-salary-section">
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div style="background: #f3f4f6;" class="px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h2 class="text-xl font-bold text-gray-800">Status Salary Claims (Overtime Payment)</h2>
+            </div>
+            <button onclick="hideActionedSalarySection()" class="text-gray-700 hover:text-gray-900 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+            @if($actionedPayrolls->isEmpty())
+                <div class="p-6 text-gray-600">No status salary claims.</div>
+            @else
+                @foreach($actionedPayrolls as $claim)
+                @php
+                    $claimUser = null;
+                    if ($claim->ot_ids && is_array($claim->ot_ids) && !empty($claim->ot_ids)) {
+                        $firstOtId = $claim->ot_ids[0];
+                        $overtime = \App\Models\Overtime::with('staff.user')->find($firstOtId);
+                        if ($overtime && $overtime->staff && $overtime->staff->user) {
+                            $claimUser = $overtime->staff->user;
+                        }
+                    }
+                @endphp
+                <div class="p-6 hover:bg-gray-50 transition border-l-4 {{ $claim->status === 'approved' ? 'border-green-500' : 'border-red-500' }}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start space-x-4 flex-1">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                                    {{ strtoupper(substr($claimUser->name ?? 'U', 0, 2)) }}
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h3 class="font-bold text-gray-900">{{ $claimUser->name ?? 'Unknown' }}</h3>
+                                    <span class="{{ $claim->status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
+                                </div>
+                                @php $amounts = $claim->calculatePayrollAmounts(); @endphp
+                                <p class="text-sm text-gray-600 mb-2">Payroll Claim - {{ $claim->created_at->format('F Y') }}</p>
+                                <p class="text-sm text-gray-700 mb-2">
+                                    <span class="font-semibold">Amount:</span> RM {{ number_format($amounts['total_pay'] ?? 0, 2) }} |
+                                    <span class="font-semibold ml-2">Total Hours:</span> {{ number_format($amounts['total_hours'] ?? 0, 1) }} hours |
+                                    <span class="font-semibold ml-2">Period:</span> {{ $claim->created_at->format('M Y') }}
+                                </p>
+                                <div class="bg-gray-50 p-3 rounded border border-gray-200 text-xs">
+                                    <p class="text-gray-700 mb-1"><span class="font-semibold">Breakdown:</span></p>
+                                    <ul class="space-y-1 text-gray-600">
+                                        @if(($amounts['fulltime_hours'] ?? 0) > 0)
+                                            <li>• Fulltime OT: {{ number_format($amounts['fulltime_hours'], 1) }} hours @ RM 12.26/hr = RM {{ number_format($amounts['fulltime_pay'], 2) }}</li>
+                                        @endif
+                                        @if(($amounts['public_holiday_hours'] ?? 0) > 0)
+                                            <li>• Public Holiday OT: {{ number_format($amounts['public_holiday_hours'], 1) }} hours @ RM 21.68/hr = RM {{ number_format($amounts['public_holiday_pay'], 2) }}</li>
+                                        @endif
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end space-y-2 ml-4">
+                            <span class="text-xs text-gray-500">{{ $claim->created_at->diffForHumans() }}</span>
+                            <span class="text-xs {{ $claim->status === 'approved' ? 'text-green-600' : 'text-red-600' }} font-semibold">✓ {{ ucfirst($claim->status) }}</span>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            @endif
+        </div>
+    </div>
+</div>
+
+<!-- Status of Replacement Leave Claims Section (Hidden by default) -->
+<div class="mt-8 hidden" id="actioned-leave-section">
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div style="background: #f3f4f6;" class="px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+                <h2 class="text-xl font-bold text-gray-800">Status of Replacement Leave Claims</h2>
+            </div>
+            <button onclick="hideActionedLeaveSection()" class="text-gray-700 hover:text-gray-900 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+            @if($actionedReplacements->isEmpty())
+                <div class="p-6 text-gray-600">No status replacement leave claims.</div>
+            @else
+                @foreach($actionedReplacements as $claim)
+                @php
+                    $claimUser = null;
+                    if ($claim->ot_ids && is_array($claim->ot_ids) && !empty($claim->ot_ids)) {
+                        $firstOtId = $claim->ot_ids[0];
+                        $overtime = \App\Models\Overtime::with('staff.user')->find($firstOtId);
+                        if ($overtime && $overtime->staff && $overtime->staff->user) {
+                            $claimUser = $overtime->staff->user;
+                        }
+                    }
+                    if (!$claimUser && $claim->user) {
+                        $claimUser = $claim->user;
+                    }
+                @endphp
+                <div class="p-6 hover:bg-gray-50 transition border-l-4 {{ $claim->status === 'approved' ? 'border-green-500' : 'border-red-500' }}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start space-x-4 flex-1">
+                            <div class="flex-shrink-0">
+                                <div class="w-12 h-12 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                                    {{ strtoupper(substr($claimUser->name ?? 'U', 0, 2)) }}
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-1">
+                                    <h3 class="font-bold text-gray-900">{{ $claimUser->name ?? 'Unknown' }}</h3>
+                                    <span class="{{ $claim->status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }} text-xs font-semibold px-2 py-0.5 rounded">{{ ucfirst($claim->status) }}</span>
+                                </div>
+                                <p class="text-sm text-gray-600 mb-2">Replacement Leave Claim - {{ $claim->created_at->format('F Y') }}</p>
+                                <p class="text-sm text-gray-700 mb-2">
+                                    <span class="font-semibold">Days Claimed:</span> {{ intval($claim->replacement_days) }} day{{ intval($claim->replacement_days) > 1 ? 's' : '' }} |
+                                    <span class="font-semibold ml-2">Total Hours:</span> {{ number_format(($claim->fulltime_hours ?? 0) + ($claim->public_holiday_hours ?? 0), 1) }} hours |
+                                    <span class="font-semibold ml-2">Date:</span> {{ $claim->created_at->format('M d, Y') }}
+                                </p>
+                                <div class="bg-gray-50 p-3 rounded border border-gray-200 text-xs">
+                                    <p class="text-gray-700 mb-1"><span class="font-semibold">Details:</span></p>
+                                    <ul class="space-y-1 text-gray-600">
+                                        <li>• Submitted: {{ $claim->created_at->format('M d, Y H:i') }}</li>
+                                        <li>• Fulltime Hours: {{ number_format($claim->fulltime_hours ?? 0, 1) }}</li>
+                                        <li>• Public Holiday Hours: {{ number_format($claim->public_holiday_hours ?? 0, 1) }}</li>
+                                        <li>• Status: {{ ucfirst($claim->status) }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end space-y-2 ml-4">
+                            <span class="text-xs text-gray-500">{{ $claim->created_at->diffForHumans() }}</span>
+                            <span class="text-xs {{ $claim->status === 'approved' ? 'text-green-600' : 'text-red-600' }} font-semibold">✓ {{ ucfirst($claim->status) }}</span>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            @endif
+        </div>
     </div>
 </div>
 
@@ -830,6 +1071,24 @@ window.hideSalarySection = function () {
 window.showLeaveSection = function () { _showAndScroll('leave-section'); }
 window.hideLeaveSection = function () {
     const section = document.getElementById('leave-section');
+    if (section) section.classList.add('hidden');
+}
+
+window.showActionedOvertimeSection = function () { _showAndScroll('actioned-overtime-section'); }
+window.hideActionedOvertimeSection = function () {
+    const section = document.getElementById('actioned-overtime-section');
+    if (section) section.classList.add('hidden');
+}
+
+window.showActionedSalarySection = function () { _showAndScroll('actioned-salary-section'); }
+window.hideActionedSalarySection = function () {
+    const section = document.getElementById('actioned-salary-section');
+    if (section) section.classList.add('hidden');
+}
+
+window.showActionedLeaveSection = function () { _showAndScroll('actioned-leave-section'); }
+window.hideActionedLeaveSection = function () {
+    const section = document.getElementById('actioned-leave-section');
     if (section) section.classList.add('hidden');
 }
 

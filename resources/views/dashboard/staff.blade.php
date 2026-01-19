@@ -25,14 +25,16 @@ use App\Models\Leave;
 use App\Models\LeaveBalance;
 use Carbon\Carbon;
 
-// Approved overtime (summary and full list)
+// Overtime requests with status (approved/rejected) - summary and full list
 $staff = $user->staff;
 $staffId = $staff ? $staff->id : null;
-$approvedOT = $staffId ? Overtime::where('staff_id', $staffId)
-    ->where('status', 'approved')
+$overtimeRequests = $staffId ? Overtime::where('staff_id', $staffId)
+    ->whereIn('status', ['approved', 'rejected'])
     ->orderBy('ot_date', 'desc')
     ->get() : collect();
-$approvedCount = $approvedOT->count();
+$approvedOT = $overtimeRequests->where('status', 'approved');
+$rejectedOT = $overtimeRequests->where('status', 'rejected');
+$totalOvertimeCount = $overtimeRequests->count();
 
 // Salary / OT claims (recent) - query payroll claims for this staff
 $salaryClaims = collect();
@@ -250,7 +252,7 @@ $otClaimsStatus = [
         </div>
     </div>
 
-    <!-- Overtime Request Approved Notification -->
+    <!-- Overtime Request Status Notification -->
     <div class="bg-white rounded-lg shadow-lg overflow-hidden min-w-0">
         <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-4 md:px-6 py-3 md:py-4">
             <div class="flex items-center space-x-2">
@@ -258,28 +260,39 @@ $otClaimsStatus = [
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <h2 class="text-sm md:text-lg font-bold text-white flex items-center gap-2">
-                    <span>Overtime Approved</span>
+                    <span>Overtime Status</span>
                     <span class="bg-white text-orange-600 text-xs font-bold px-2.5 py-1 rounded-full" style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">
-                        {{ $approvedCount }}
+                        {{ $totalOvertimeCount }}
                     </span>
                 </h2>
             </div>
         </div>
         <div class="p-3 md:p-4">
             <div class="space-y-2">
-                @forelse($approvedOT->take(2) as $ot)
-                <div class="flex items-center space-x-2 p-2 bg-green-50 rounded hover:bg-green-100 transition cursor-pointer text-xs md:text-sm">
-                    <div class="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
+                @php
+                    $recentOT = $overtimeRequests->take(2);
+                @endphp
+                @forelse($recentOT as $ot)
+                @php
+                    $isApproved = $ot->status === 'approved';
+                    $isRejected = $ot->status === 'rejected';
+                @endphp
+                <div class="flex items-center space-x-2 p-2 {{ $isApproved ? 'bg-green-50 border border-green-200' : ($isRejected ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200') }} rounded {{ $isApproved ? 'hover:bg-green-100' : ($isRejected ? 'hover:bg-red-100' : 'hover:bg-yellow-100') }} transition cursor-pointer text-xs md:text-sm">
+                    <div class="w-1.5 h-1.5 {{ $isApproved ? 'bg-green-500' : ($isRejected ? 'bg-red-500' : 'bg-yellow-500') }} rounded-full flex-shrink-0"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <p class="font-semibold text-gray-800 truncate">{{ $ot->ot_date->format('M d') }} - {{ number_format($ot->hours,1) }}hrs</p>
+                            @if($isApproved)
                             <span class="bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded">✓ Approved</span>
+                            @elseif($isRejected)
+                            <span class="bg-red-100 text-red-800 text-xs font-semibold px-1.5 py-0.5 rounded">✗ Rejected</span>
+                            @endif
                         </div>
-                        <p class="text-xs text-gray-500">Approved {{ $ot->updated_at->diffForHumans() }}</p>
+                        <p class="text-xs {{ $isRejected ? 'text-red-600' : 'text-gray-500' }}">{{ ucfirst($ot->status) }} {{ $ot->updated_at->diffForHumans() }}</p>
                     </div>
                 </div>
                 @empty
-                <div class="text-xs text-gray-600">No approved overtime yet</div>
+                <div class="text-xs text-gray-600">No overtime requests yet</div>
                 @endforelse
                 <div class="mt-3 pt-3 border-t border-gray-200">
                     <button onclick="showOvertimeApprovedSection()" class="block w-full text-center text-xs font-semibold text-orange-600 hover:text-orange-700 transition">
@@ -392,7 +405,7 @@ $otClaimsStatus = [
     </div>
 </div>
 
-<!-- Approved Overtime Section (Hidden by default) -->
+<!-- Overtime Status Section (Hidden by default) -->
 <div class="mt-8 hidden" id="overtime-approved-section">
     <div class="bg-white rounded-lg shadow-lg overflow-hidden">
         <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);" class="px-6 py-4 flex justify-between items-center">
@@ -400,7 +413,7 @@ $otClaimsStatus = [
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <h2 class="text-xl font-bold text-white">Approved Overtime Requests</h2>
+                <h2 class="text-xl font-bold text-white">Overtime Request Status</h2>
             </div>
             <button onclick="hideOvertimeApprovedSection()" class="text-white hover:text-orange-100 transition">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -410,12 +423,20 @@ $otClaimsStatus = [
         </div>
         
         <div class="divide-y divide-gray-200">
-            @forelse($approvedOT as $otItem)
-            <div class="p-6 bg-green-50 border-l-4 border-green-500">
+            @forelse($overtimeRequests as $otItem)
+            @php
+                $isApproved = $otItem->status === 'approved';
+                $isRejected = $otItem->status === 'rejected';
+                $bgColor = $isApproved ? 'bg-green-50' : ($isRejected ? 'bg-red-50' : 'bg-yellow-50');
+                $borderColor = $isApproved ? 'border-green-500' : ($isRejected ? 'border-red-500' : 'border-yellow-500');
+                $statusClass = $isApproved ? 'bg-green-100 text-green-800' : ($isRejected ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
+                $statusLabel = $isApproved ? '✓ Approved' : ($isRejected ? '✗ Rejected' : 'Pending');
+            @endphp
+            <div class="p-6 {{ $bgColor }} border-l-4 {{ $borderColor }}">
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
                         <div class="flex items-center space-x-2 mb-2">
-                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded">✓ Approved</span>
+                            <span class="{{ $statusClass }} text-xs font-semibold px-2 py-0.5 rounded">{{ $statusLabel }}</span>
                             <span class="text-xs text-gray-500">{{ $otItem->updated_at->diffForHumans() }}</span>
                         </div>
                         <h3 class="font-bold text-gray-900 mb-2">Overtime Request - {{ $otItem->ot_date->format('F d, Y') }}</h3>
@@ -425,18 +446,20 @@ $otClaimsStatus = [
                                 <p class="text-sm font-semibold text-gray-800">{{ number_format($otItem->hours ?? 0, 1) }} hours</p>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-600">Approved By:</p>
-                                <p class="text-sm font-semibold text-gray-800">{{ $otItem->approved_by ?? 'Admin' }}</p>
+                                <p class="text-sm text-gray-600">Type:</p>
+                                <p class="text-sm font-semibold text-gray-800">{{ ucfirst($otItem->ot_type ?? 'N/A') }}</p>
                             </div>
                         </div>
-                        <div class="bg-white p-3 rounded border border-green-200 text-sm">
-                            <p class="text-gray-700"><span class="font-semibold">Reason:</span> {{ $otItem->reason ?? 'N/A' }}</p>
+                        @if($otItem->remarks)
+                        <div class="bg-white p-3 rounded border {{ $isApproved ? 'border-green-200' : ($isRejected ? 'border-red-200' : 'border-yellow-200') }} text-sm">
+                            <p class="text-gray-700"><span class="font-semibold">{{ $isApproved ? 'Remarks:' : ($isRejected ? 'Reason:' : 'Notes:') }}</span> {{ $otItem->remarks }}</p>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
             @empty
-            <div class="p-6 text-sm text-gray-600">No approved overtime records to show.</div>
+            <div class="p-6 text-sm text-gray-600">No overtime requests to show.</div>
             @endforelse
         </div>
     </div>

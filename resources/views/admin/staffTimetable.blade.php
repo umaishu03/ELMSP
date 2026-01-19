@@ -5,60 +5,63 @@
 <div class="mb-6">
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
-<div class="mb-8">
-    <h1 class="text-4xl font-bold text-gray-800 mb-2">Staff Timetable</h1>
+<div class="mb-4 md:mb-8">
+    <h1 class="text-2xl md:text-4xl font-bold text-gray-800 mb-2">Staff Timetable</h1>
 </div>
 
 {{-- Toast Notification Container --}}
-<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2" style="max-width: 400px;"></div>
-<div class="flex flex-col lg:flex-row gap-8">
-    <div class="flex-1">
-        <div class="flex items-center justify-between p-2 border border-gray-300 rounded-lg shadow-sm bg-white mb-4">
+<div id="toast-container" class="fixed top-4 right-2 md:right-4 z-50 space-y-2" style="max-width: calc(100vw - 1rem); max-width: 400px;"></div>
+<div class="flex flex-col lg:flex-row gap-4 md:gap-8">
+    <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between p-2 md:p-3 border border-gray-300 rounded-lg shadow-sm bg-white mb-3 md:mb-4">
             <div class="flex items-center">
-                <button id="prevWeekBtn" class="flex items-center text-blue-700 font-semibold px-2 py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out">
-                    <span class="mr-2 font-bold text-gray-700">&lt;</span>
+                <button id="prevWeekBtn" class="flex items-center text-blue-700 font-semibold px-3 py-2 md:px-2 md:py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out touch-manipulation">
+                    <span class="mr-1 md:mr-2 font-bold text-gray-700 text-lg md:text-base">&lt;</span>
+                    <span class="md:hidden text-sm">Prev</span>
                 </button>
             </div>
             
-            <div id="weekRange" class="text-lg font-bold text-gray-800 mx-4">
+            <div id="weekRange" class="text-sm md:text-lg font-bold text-gray-800 mx-2 md:mx-4 text-center flex-1">
                 </div>
             
             <div class="flex items-center">
-                <button id="nextWeekBtn" class="flex items-center text-blue-700 font-semibold px-2 py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out">
-                    <span class="ml-2 font-bold text-gray-700">&gt;</span>
+                <button id="nextWeekBtn" class="flex items-center text-blue-700 font-semibold px-3 py-2 md:px-2 md:py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out touch-manipulation">
+                    <span class="md:hidden text-sm">Next</span>
+                    <span class="ml-1 md:ml-2 font-bold text-gray-700 text-lg md:text-base">&gt;</span>
                 </button>
             </div>
         </div>
-        <div class="bg-white rounded-lg shadow-lg overflow-x-auto max-w-full">
-            <table class="w-full text-xs">
+        <div class="bg-white rounded-lg shadow-lg overflow-x-auto max-w-full -mx-2 md:mx-0 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-gray-100" style="scrollbar-width: thin;">
+            <div class="inline-block min-w-full align-middle">
+            <table class="min-w-full text-[10px] sm:text-xs">
                 <!-- Table Header -->
                 <thead class="bg-blue-50 sticky top-0 z-10">
                     <tr>
-                        <th class="px-3 py-3 text-left text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[120px] w-[120px]">
+                        <th class="px-2 md:px-3 py-2 md:py-3 text-left text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[100px] md:min-w-[120px] w-[100px] md:w-[120px]">
                             Name
                         </th>
-                        <th class="px-3 py-3 text-left text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[130px] w-[130px]">
-                            Department
+                        <th class="px-2 md:px-3 py-2 md:py-3 text-left text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[90px] md:min-w-[130px] w-[90px] md:w-[130px]">
+                            Dept
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Mon
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Tue
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Wed
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Thu
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Fri
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Sat
                         </th>
-                        <th class="px-3 py-3 text-center text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
+                        <th class="px-1 md:px-3 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-blue-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                             Sun
                         </th>
                     </tr>
@@ -75,8 +78,8 @@
                     @endphp
                     @foreach($orderedStaff as $index => $staffMember)
                     <tr class="border-b align-top">
-                        <td class="px-2 py-1 font-semibold align-top truncate">{{ $staffMember->user->name }}</td>
-                        <td class="px-2 py-1 text-center text-gray-600 align-top truncate">{{ $staffMember->department }}</td>
+                        <td class="px-1 md:px-2 py-1 font-semibold align-top truncate text-[10px] sm:text-xs">{{ $staffMember->user->name }}</td>
+                        <td class="px-1 md:px-2 py-1 text-center text-gray-600 align-top truncate text-[10px] sm:text-xs">{{ $staffMember->department }}</td>
                         @foreach($dates as $day)
                             @php
                                 // Use keyed lookup to avoid issues with types and date formats
@@ -87,7 +90,7 @@
                                 $otHours = $hasOvertime ? $shift->overtime->hours : null;
                                 $isBeforeHireDate = $day < $staffMember->hire_date->format('Y-m-d');
                             @endphp
-                            <td class="px-2 py-1 cursor-pointer {{ $isBeforeHireDate ? 'bg-gray-300' : (($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50')) }} break-words" 
+                            <td class="px-1 md:px-2 py-1 cursor-pointer {{ $isBeforeHireDate ? 'bg-gray-300' : (($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50')) }} break-words text-[9px] sm:text-xs" 
                                    data-user-id="{{ $staffMember->user->id }}" 
                                    data-date="{{ $day }}"
                                    data-shift-id="{{ $shift->id ?? '' }}"
@@ -98,21 +101,21 @@
                                    data-rest_day="{{ $shift->rest_day ?? 0 }}"
                                    onclick="openEditShiftModal(this)">
                                 @if($isBeforeHireDate)
-                                    <span class="text-white font-semibold">No Shift</span>
+                                    <span class="text-white font-semibold text-[9px] sm:text-xs">No Shift</span>
                                 @elseif($shift && $leaveStatus === 'approved')
-                                    <span class="font-semibold text-red-600">LEAVE</span>
+                                    <span class="font-semibold text-red-600 text-[9px] sm:text-xs">LEAVE</span>
                                 @elseif($shift)
                                     @if(isset($shift->rest_day) && $shift->rest_day)
-                                        <span class="font-semibold text-red-600">REST DAY</span>
+                                        <span class="font-semibold text-red-600 text-[9px] sm:text-xs">REST</span>
                                     @else
-                                        {{ $shift->start_time }} - {{ $shift->end_time }}<br>
-                                        <span class="text-xs text-gray-500">Break: {{ $shift->break_minutes ?? 0 }} min</span>
+                                        <span class="block">{{ $shift->start_time }} - {{ $shift->end_time }}</span>
+                                        <span class="text-[8px] sm:text-xs text-gray-500">B: {{ $shift->break_minutes ?? 0 }}m</span>
                                         @if($hasOvertime && $otHours)
-                                            <br><span class="text-xs font-semibold text-purple-600">Overtime: {{ number_format($otHours, 1) }} hrs</span>
+                                            <br><span class="text-[8px] sm:text-xs font-semibold text-purple-600">OT: {{ number_format($otHours, 1) }}h</span>
                                         @endif
                                     @endif
                                 @else
-                                    <span class="text-gray-400 italic">Add Shift</span>
+                                    <span class="text-gray-400 italic text-[9px] sm:text-xs">Add</span>
                                 @endif
                             </td>
                         @endforeach
@@ -120,10 +123,11 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
-    <div class="w-full lg:w-80 flex-shrink-0">
-        <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+    <div class="w-full lg:w-80 flex-shrink-0 order-first lg:order-last">
+        <div class="bg-white rounded-lg shadow-lg p-3 md:p-4 mb-4">
             <div class="relative w-full mb-2">
                 <input id="assignSearch" type="text" 
                     placeholder="Search" 
@@ -197,8 +201,8 @@
                     <button type="button" class="day-toggle px-2 py-1 bg-blue-100 rounded text-xs font-semibold" data-day="sun">S</button>
                 </div>
             </div>
-            <button id="assignShiftsBtn" class="w-full mb-2 bg-blue-600 text-white py-2 rounded"> Assign Shifts</button>
-            <button id="assignEditBtn" class="w-full mb-2 bg-green-600 text-white py-2 rounded"> Edit Shift</button>
+            <button id="assignShiftsBtn" class="w-full mb-2 bg-blue-600 text-white py-2.5 md:py-2 rounded text-sm md:text-base font-semibold hover:bg-blue-700 transition touch-manipulation"> Assign Shifts</button>
+            <button id="assignEditBtn" class="w-full mb-2 bg-green-600 text-white py-2.5 md:py-2 rounded text-sm md:text-base font-semibold hover:bg-green-700 transition touch-manipulation"> Edit Shift</button>
             <input type="hidden" id="assignEditShiftId" value="">
             <div id="assignStatus" class="mt-2 text-sm text-gray-700"></div>
             <div id="toast" class="fixed top-6 right-6 z-50 px-6 py-4 rounded-lg shadow-2xl transform transition-all duration-300 ease-in-out hidden">
@@ -216,13 +220,19 @@
                 @keyframes spin { to { transform: rotate(360deg); } }
                 #toast.show { transform: translateX(0) scale(1); opacity: 1; }
                 #toast.hidden { transform: translateX(400px) scale(0.9); opacity: 0; }
+                .touch-manipulation { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+                @media (max-width: 640px) {
+                    .day-toggle { min-width: 32px; min-height: 32px; }
+                    #assignSearch, #assignDepartment, #assignUsers { font-size: 16px; }
+                    #assignStartTime, #assignEndTime, #assignBreakMinutes { font-size: 16px; }
+                }
             </style>
         </div>
     </div>
 </div>
 
-<div id="editShiftModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+<div id="editShiftModal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden p-4">
+    <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 class="text-lg font-bold mb-4">EDIT SHIFT</h2>
         <div class="mb-2">
             <label class="block text-xs font-semibold mb-1">Start Time:</label>
@@ -257,9 +267,9 @@
         </div>
         <input type="hidden" id="editUserId" value="">
         <input type="hidden" id="editDate" value="">
-            <div class="flex gap-2 mt-4">
-                <button id="editSaveBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Save Changes</button>
-                <button id="editDeleteBtn" class="bg-red-600 text-white px-4 py-2 rounded">Delete Shift</button>
+            <div class="flex flex-col sm:flex-row gap-2 mt-4">
+                <button id="editSaveBtn" class="flex-1 bg-blue-600 text-white px-4 py-2.5 md:py-2 rounded text-sm md:text-base font-semibold hover:bg-blue-700 transition touch-manipulation">Save Changes</button>
+                <button id="editDeleteBtn" class="flex-1 bg-red-600 text-white px-4 py-2.5 md:py-2 rounded text-sm md:text-base font-semibold hover:bg-red-700 transition touch-manipulation">Delete Shift</button>
             </div>
             <input type="hidden" id="editShiftId" value="">
         <div class="mt-2 text-xs text-yellow-700 bg-yellow-100 rounded px-2 py-1">⚠ Warning: Edit creates overlap with another shift</div>
