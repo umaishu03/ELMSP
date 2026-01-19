@@ -37,7 +37,7 @@
                     Staff Name
                 </th>
                 <th class="px-2 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[90px] md:min-w-[130px] w-[90px] md:w-[130px]">
-                    Dept
+                    Department
                 </th>
                 <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
                     Mon
