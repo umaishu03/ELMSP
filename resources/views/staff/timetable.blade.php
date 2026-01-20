@@ -5,59 +5,56 @@
 <div class="mb-6">
     {!! \App\Helpers\BreadcrumbHelper::render() !!}
 </div>
-<div class="mb-4 md:mb-8">
-    <h1 class="text-2xl md:text-4xl font-bold text-gray-800 mb-2">My Timetable</h1>
+<div class="mb-8">
+    <h1 class="text-4xl font-bold text-gray-800 mb-2">My Timetable</h1>
 </div>
-<div class="flex items-center justify-between p-2 md:p-3 border border-gray-300 rounded-lg shadow-sm bg-white mb-3 md:mb-4">
+<div class="flex items-center justify-between p-2 border border-gray-300 rounded-lg shadow-sm bg-white mb-4">
     
     <div class="flex items-center">
-        <button id="prevWeekBtn" class="flex items-center text-blue-700 font-semibold px-3 py-2 md:px-2 md:py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out touch-manipulation">
-            <span class="mr-1 md:mr-2 font-bold text-gray-700 text-lg md:text-base">&lt;</span>
-            <span class="md:hidden text-sm">Prev</span>
+        <button id="prevWeekBtn" class="flex items-center text-blue-700 font-semibold px-2 py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out">
+            <span class="mr-2 font-bold text-gray-700">&lt;</span>
         </button>
     </div>
 
-    <div id="weekRange" class="text-sm md:text-lg font-bold text-gray-800 mx-2 md:mx-4 text-center flex-1"></div>
+    <div id="weekRange" class="text-lg font-bold text-gray-800 mx-4"></div>
 
     <div class="flex items-center">
-        <button id="nextWeekBtn" class="flex items-center text-blue-700 font-semibold px-3 py-2 md:px-2 md:py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out touch-manipulation">
-            <span class="md:hidden text-sm">Next</span>
-            <span class="ml-1 md:ml-2 font-bold text-gray-700 text-lg md:text-base">&gt;</span>
+        <button id="nextWeekBtn" class="flex items-center text-blue-700 font-semibold px-2 py-1 rounded-md hover:bg-gray-100 transition duration-150 ease-in-out">
+            <span class="ml-2 font-bold text-gray-700">&gt;</span>
         </button>
     </div>
 </div>
 
-<div class="bg-white rounded-lg shadow-lg overflow-x-auto -mx-2 md:mx-0 scrollbar-thin scrollbar-thumb-purple-300 scrollbar-track-gray-100" style="scrollbar-width: thin;">
-    <div class="inline-block min-w-full align-middle">
-    <table class="min-w-full text-[10px] sm:text-xs">
+<div class="bg-white rounded-lg shadow-lg overflow-x-auto">
+    <table class="min-w-full text-xs">
 <!-- Table Header -->
         <thead class="bg-purple-50 sticky top-0 z-10">
             <tr>
-                <th class="px-2 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[100px] md:min-w-[120px] w-[100px] md:w-[120px]">
+                <th class="px-6 py-3 text-left text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[120px] w-[120px]">
                     Staff Name
                 </th>
-                <th class="px-2 md:px-6 py-2 md:py-3 text-left text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[90px] md:min-w-[130px] w-[90px] md:w-[130px]">
+                <th class="px-6 py-3 text-left text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[130px] w-[130px]">
                     Department
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Mon
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Tue
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Wed
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Thu
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Fri
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Sat
                 </th>
-                <th class="px-1 md:px-6 py-2 md:py-3 text-center text-xs md:text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[80px] md:min-w-[110px] w-[80px] md:w-[110px]">
+                <th class="px-6 py-3 text-center text-sm font-bold text-purple-800 uppercase tracking-wider whitespace-nowrap min-w-[110px] w-[110px]">
                     Sun
                 </th>
             </tr>
@@ -66,8 +63,8 @@
             @foreach($staff as $index => $staffMember)
             @php $isCurrent = (isset($staffMember->user) && isset($staffMember->user->id) && $staffMember->user->id === auth()->id()); @endphp
             <tr class="border-b {{ $isCurrent ? 'bg-blue-50' : '' }}">
-                <td class="px-1 md:px-2 py-1 md:py-2 font-semibold {{ $isCurrent ? 'text-blue-600' : '' }} text-[10px] sm:text-xs">{{ $staffMember->user->name }}</td>
-                <td class="px-1 md:px-2 py-1 md:py-2 text-center text-gray-600 text-[10px] sm:text-xs">{{ $staffMember->department ?? '' }}</td>
+                <td class="px-2 py-2 font-semibold {{ $isCurrent ? 'text-blue-600' : '' }}">{{ $staffMember->user->name }}</td>
+                <td class="px-2 py-2 text-center text-gray-600">{{ $staffMember->department ?? '' }}</td>
                 @foreach($dates as $day)
                     @php
                         $key = $staffMember->user->id . '|' . $day;
@@ -77,23 +74,23 @@
                         $otHours = $hasOvertime ? $shift->overtime->hours : null;
                         $isBeforeHireDate = $day < $staffMember->hire_date->format('Y-m-d');
                     @endphp
-                    <td class="px-1 md:px-2 py-1 md:py-2 {{ $isBeforeHireDate ? 'bg-gray-300' : (($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50')) }} text-[9px] sm:text-xs">
+                    <td class="px-2 py-2 {{ $isBeforeHireDate ? 'bg-gray-300' : (($shift && $leaveStatus === 'approved') ? 'bg-red-100' : ($shift ? (isset($shift->rest_day) && $shift->rest_day ? 'bg-yellow-100' : 'bg-green-100') : 'bg-gray-50')) }}">
                         @if($isBeforeHireDate)
-                            <span class="text-white font-semibold text-[9px] sm:text-xs">No Shift</span>
+                            <span class="text-white font-semibold">No Shift</span>
                         @elseif($shift && $leaveStatus === 'approved')
-                            <span class="font-semibold text-red-600 text-[9px] sm:text-xs">LEAVE</span>
+                            <span class="font-semibold text-red-600">LEAVE</span>
                         @elseif($shift)
                             @if(isset($shift->rest_day) && $shift->rest_day)
-                                <span class="font-semibold text-red-600 text-[9px] sm:text-xs">REST</span>
+                                <span class="font-semibold text-red-600">REST DAY</span>
                             @else
-                                <span class="block">{{ $shift->start_time }} - {{ $shift->end_time }}</span>
-                                <span class="text-[8px] sm:text-xs text-gray-500">B: {{ $shift->break_minutes ?? 0 }}m</span>
+                                {{ $shift->start_time }} - {{ $shift->end_time }}<br>
+                                <span class="text-xs text-gray-500">Break: {{ $shift->break_minutes ?? 0 }} min</span>
                                 @if($hasOvertime && $otHours)
-                                    <br><span class="text-[8px] sm:text-xs font-semibold text-purple-600">OT: {{ number_format($otHours, 1) }}h</span>
+                                    <br><span class="text-xs font-semibold text-purple-600">Overtime: {{ number_format($otHours, 1) }} hrs</span>
                                 @endif
                             @endif
                         @else
-                            <span class="text-gray-400 italic text-[9px] sm:text-xs">No Shift</span>
+                            <span class="text-gray-400 italic">No Shift</span>
                         @endif
                     </td>
                 @endforeach
@@ -101,7 +98,6 @@
             @endforeach
         </tbody>
     </table>
-    </div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
