@@ -1313,7 +1313,7 @@ class PayrollController extends Controller
             
             // 2026 Public Holidays
             '2026-01-01', // New Year's Day
-            '2026-02-01', // Federal Territory Day / Thaipusam (both fall on same day in 2026)
+            '2026-02-01', // Thaipusam (both fall on same day in 2026)
             '2026-02-17', // Chinese New Year
             '2026-02-18', // Chinese New Year (2nd Day)
             '2026-03-20', // Hari Raya Aidilfitri

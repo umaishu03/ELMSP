@@ -335,10 +335,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========== PUBLIC HOLIDAYS SECTION ==========
 const publicHolidays = [
     { name: "New Year's Day", date: "2026-01-01", day: "Thursday" },
+    { name: "Thaipusam", date: "2026-02-01", day: "Saturday" },
     { name: "Chinese New Year", date: "2026-02-17", day: "Tuesday" },
     { name: "Chinese New Year (2nd Day)", date: "2026-02-18", day: "Wednesday" },
-    { name: "Federal Territory Day", date: "2026-02-01", day: "Sunday" },
-    { name: "Thaipusam", date: "2026-01-31", day: "Saturday" },
     { name: "Hari Raya Aidilfitri", date: "2026-03-20", day: "Friday" },
     { name: "Hari Raya Aidilfitri (2nd Day)", date: "2026-03-21", day: "Saturday" },
     { name: "Labour Day", date: "2026-05-01", day: "Friday" },
@@ -347,8 +346,8 @@ const publicHolidays = [
     { name: "Hari Raya Aidiladha", date: "2026-05-27", day: "Wednesday" },
     { name: "Awal Muharram", date: "2026-07-16", day: "Thursday" },
     { name: "Merdeka Day", date: "2026-08-31", day: "Monday" },
-    { name: "Malaysia Day", date: "2026-09-16", day: "Wednesday" },
     { name: "Prophet Muhammad's Birthday", date: "2026-08-25", day: "Tuesday" },
+    { name: "Malaysia Day", date: "2026-09-16", day: "Wednesday" },
     { name: "Deepavali", date: "2026-11-08", day: "Sunday" },
     { name: "Christmas Day", date: "2026-12-25", day: "Friday" }
 ];
